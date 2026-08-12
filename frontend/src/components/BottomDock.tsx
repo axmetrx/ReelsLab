@@ -9,9 +9,9 @@ export default function BottomDock() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: 'Главная', href: '/course/reelslab-course-01', icon: Home },
+    { label: 'Кабинет', href: '/dashboard', icon: Home },
     { label: 'Уведомления', href: '/notifications', icon: Bell },
-    { label: 'Профиль', href: '/profile', icon: User },
+    { label: 'Профиль', href: '/dashboard', icon: User },
   ];
 
   return (
