@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { adminApi } from '@/lib/admin-api';
+import { useLMSStore } from '@/lib/store';
 import { ExternalLink } from 'lucide-react';
 
 export default function AdminLayout({
@@ -12,25 +11,31 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const store = useLMSStore();
 
-  const handleStudentViewClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    const accesses = await adminApi.getAccesses();
-    const courses = await adminApi.getCourses();
-
-    if (accesses.length === 0 || courses.length === 0) {
-      alert('В системе нет зарегистрированных учеников или созданных курсов.\nВы будете перенаправлены на страницу регистрации ученика.');
-      router.push('/register');
+  const handleStudentViewClick = () => {
+    const { users } = store;
+    if (users.length > 0) {
+      const firstStudent = users[0];
+      store.switchCurrentUser({
+        id: firstStudent.id,
+        name: firstStudent.name,
+        email: firstStudent.email,
+        role: 'student',
+        grantedCourses: firstStudent.grantedCourses || [],
+      });
+      router.push('/dashboard');
     } else {
-      router.push(`/course/${accesses[0].courseId || 'reelslab-course-01'}`);
+      alert('В базе нет зарегистрированных учеников.\nВы будете перенаправлены на форму регистрации.');
+      router.push('/auth');
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F4F6] text-slate-900">
-      {/* Top Admin Header Bar */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900">
+      {/* ЕДИНЫЙ ХЕДЕР АДМИН-ПАНЕЛИ (Single Unified Header Bar) */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-2xs">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-sm">
               R
@@ -61,7 +66,7 @@ export default function AdminLayout({
       </header>
 
       {/* Main Admin Content Container */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">{children}</main>
+      <main className="max-w-5xl mx-auto px-4 py-6">{children}</main>
     </div>
   );
 }

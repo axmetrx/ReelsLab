@@ -8,6 +8,7 @@ export interface Lesson {
   type?: 'VIDEO' | 'FILE' | 'HOMEWORK' | string;
   duration?: number;
   videoUrl?: string;
+  description?: string;
 }
 
 export interface Module {
@@ -197,7 +198,7 @@ export function useLMSStore() {
     addLesson: (
       courseId: string,
       moduleId: string,
-      lessonData: { title: string; type?: string; videoUrl?: string; duration?: number }
+      lessonData: { title: string; type?: string; videoUrl?: string; duration?: number; description?: string }
     ) => {
       const { courses } = getRawData();
       const updated = courses.map((c) => {
@@ -212,8 +213,45 @@ export function useLMSStore() {
                 videoUrl:
                   lessonData.videoUrl ||
                   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+                description: lessonData.description || '',
               };
               return { ...m, lessons: [...m.lessons, newLesson] };
+            }
+            return m;
+          });
+          return { ...c, modules: newModules };
+        }
+        return c;
+      });
+      localStorage.setItem(STORAGE_COURSES, JSON.stringify(updated));
+      notifyStoreUpdate();
+    },
+
+    updateLesson: (
+      courseId: string,
+      moduleId: string,
+      lessonId: string,
+      lessonData: { title?: string; type?: string; videoUrl?: string; duration?: number; description?: string }
+    ) => {
+      const { courses } = getRawData();
+      const updated = courses.map((c) => {
+        if (c.id === courseId) {
+          const newModules = c.modules.map((m) => {
+            if (m.id === moduleId) {
+              const newLessons = m.lessons.map((l) => {
+                if (l.id === lessonId) {
+                  return {
+                    ...l,
+                    title: lessonData.title !== undefined ? lessonData.title.trim() : l.title,
+                    type: lessonData.type !== undefined ? lessonData.type : l.type,
+                    videoUrl: lessonData.videoUrl !== undefined ? lessonData.videoUrl.trim() : l.videoUrl,
+                    duration: lessonData.duration !== undefined ? lessonData.duration : l.duration,
+                    description: lessonData.description !== undefined ? lessonData.description.trim() : l.description,
+                  };
+                }
+                return l;
+              });
+              return { ...m, lessons: newLessons };
             }
             return m;
           });
