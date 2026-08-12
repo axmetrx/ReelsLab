@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useLMSStore } from '@/lib/store';
+import { useLMSStore, Course } from '@/lib/store';
 import {
   Plus,
   BookOpen,
@@ -16,6 +16,9 @@ import {
   UserX,
   ExternalLink,
   Film,
+  FileText,
+  Download,
+  Link as LinkIcon,
 } from 'lucide-react';
 
 export default function AdminPanel() {
@@ -33,6 +36,13 @@ export default function AdminPanel() {
   // New Module Form State
   const [selectedCourseForModule, setSelectedCourseForModule] = useState<string | null>(null);
   const [moduleTitle, setModuleTitle] = useState('');
+
+  // New Lesson Form Modal State
+  const [showAddLessonModal, setShowAddLessonModal] = useState<{ courseId: string; moduleId: string } | null>(null);
+  const [lessonTitle, setLessonTitle] = useState('');
+  const [lessonType, setLessonType] = useState<'VIDEO' | 'FILE' | 'HOMEWORK'>('VIDEO');
+  const [lessonVideoUrl, setLessonVideoUrl] = useState('');
+  const [lessonDuration, setLessonDuration] = useState('10');
 
   // Access Grant Form State
   const [selectedStudentId, setSelectedStudentId] = useState('');
@@ -77,10 +87,20 @@ export default function AdminPanel() {
     setSelectedCourseForModule(null);
   };
 
-  const handleAddLesson = (courseId: string, moduleId: string) => {
-    const title = window.prompt('Введите название урока:');
-    if (!title?.trim()) return;
-    store.addLesson(courseId, moduleId, title);
+  const handleAddLessonSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showAddLessonModal || !lessonTitle.trim()) return;
+
+    store.addLesson(showAddLessonModal.courseId, showAddLessonModal.moduleId, {
+      title: lessonTitle.trim(),
+      type: lessonType,
+      videoUrl: lessonVideoUrl.trim() || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+      duration: parseInt(lessonDuration, 10) || 10,
+    });
+
+    setLessonTitle('');
+    setLessonVideoUrl('');
+    setShowAddLessonModal(null);
   };
 
   const handleGrantAccess = (e: React.FormEvent) => {
@@ -89,7 +109,7 @@ export default function AdminPanel() {
     const course = courses.find((c) => c.id === selectedCourseId) || courses[0];
 
     if (!student) {
-      alert('Сначала зарегистрируйте ученика!');
+      alert('Сначала зарегистрируйтесь или добавьте ученика!');
       return;
     }
     if (!course) {
@@ -199,7 +219,7 @@ export default function AdminPanel() {
               </button>
             </div>
 
-            {/* Course Creation Modal */}
+            {/* Course Creation Form */}
             {showCourseForm && (
               <form onSubmit={handleCreateCourse} className="bg-white border border-blue-200 rounded-2xl p-5 shadow-sm space-y-3">
                 <h3 className="text-sm font-bold text-slate-900">Новая обучающая программа</h3>
@@ -211,7 +231,7 @@ export default function AdminPanel() {
                     placeholder="Например: ReelsLab — Вирусный контент 2026"
                     value={courseTitle}
                     onChange={(e) => setCourseTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 outline-none focus:border-blue-600"
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 outline-none focus:border-blue-600 font-medium"
                   />
                 </div>
                 <div>
@@ -221,7 +241,7 @@ export default function AdminPanel() {
                     placeholder="Краткое описание программы..."
                     value={courseDesc}
                     onChange={(e) => setCourseDesc(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 outline-none focus:border-blue-600 resize-none"
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 outline-none focus:border-blue-600 resize-none font-medium"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
@@ -234,6 +254,69 @@ export default function AdminPanel() {
                   </button>
                   <button type="submit" className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white">
                     Сохранить
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Modal for Add Lesson */}
+            {showAddLessonModal && (
+              <form onSubmit={handleAddLessonSubmit} className="bg-white border border-blue-200 rounded-2xl p-5 shadow-md space-y-3">
+                <h3 className="text-sm font-bold text-slate-900">Добавить урок в модуль</h3>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Название урока</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Например: Настройка света и камеры"
+                    value={lessonTitle}
+                    onChange={(e) => setLessonTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 outline-none focus:border-blue-600 font-medium"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Тип урока</label>
+                    <select
+                      value={lessonType}
+                      onChange={(e) => setLessonType(e.target.value as any)}
+                      className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 bg-white font-medium"
+                    >
+                      <option value="VIDEO">Видео</option>
+                      <option value="HOMEWORK">Домашнее задание</option>
+                      <option value="FILE">Файл / Шаблон</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Длительность (мин)</label>
+                    <input
+                      type="number"
+                      value={lessonDuration}
+                      onChange={(e) => setLessonDuration(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 font-medium"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Ссылка на видео (Embed URL / MP4 / Kinescope / Vimeo)</label>
+                  <input
+                    type="url"
+                    placeholder="https://commondatastorage.googleapis.com/... или Vimeo/Kinescope/YouTube embed"
+                    value={lessonVideoUrl}
+                    onChange={(e) => setLessonVideoUrl(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 outline-none focus:border-blue-600 font-medium"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddLessonModal(null)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600"
+                  >
+                    Отмена
+                  </button>
+                  <button type="submit" className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white">
+                    Добавить урок
                   </button>
                 </div>
               </form>
@@ -264,9 +347,9 @@ export default function AdminPanel() {
                         <button
                           type="button"
                           onClick={() => setSelectedCourseForModule(course.id)}
-                          className="text-xs font-semibold text-blue-600 hover:underline inline-flex items-center gap-1"
+                          className="text-xs font-semibold text-blue-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <Plus size={14} /> Модуль
+                          <Plus size={14} /> Добавить модуль
                         </button>
                       </div>
 
@@ -275,13 +358,13 @@ export default function AdminPanel() {
                           <input
                             type="text"
                             required
-                            placeholder="Название модуля"
+                            placeholder="Например: Модуль 1. Основы вирусных Reels"
                             value={moduleTitle}
                             onChange={(e) => setModuleTitle(e.target.value)}
-                            className="flex-1 px-3 py-1.5 rounded-lg text-xs border border-slate-300 outline-none"
+                            className="flex-1 px-3 py-1.5 rounded-lg text-xs border border-slate-300 outline-none font-medium"
                           />
                           <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold">
-                            ОК
+                            Создать
                           </button>
                         </form>
                       )}
@@ -290,22 +373,45 @@ export default function AdminPanel() {
                         <div key={m.id} className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-slate-900">{m.title}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleAddLesson(course.id, m.id)}
-                              className="text-[11px] font-semibold text-blue-600 hover:underline"
-                            >
-                              + Урок
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setShowAddLessonModal({ courseId: course.id, moduleId: m.id })}
+                                className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
+                              >
+                                + Урок
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => store.deleteModule(course.id, m.id)}
+                                className="text-slate-400 hover:text-red-600 p-1"
+                                title="Удалить модуль"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </div>
 
-                          <div className="space-y-1 pl-2">
-                            {m.lessons.map((l) => (
-                              <div key={l.id} className="text-xs font-medium text-slate-700 flex items-center gap-2 py-0.5">
-                                <Video size={13} className="text-blue-600" />
-                                <span>{l.title}</span>
-                              </div>
-                            ))}
+                          <div className="space-y-1.5 pl-2">
+                            {m.lessons.length === 0 ? (
+                              <div className="text-[11px] text-slate-400 italic">Нет уроков. Нажмите «+ Урок».</div>
+                            ) : (
+                              m.lessons.map((l) => (
+                                <div key={l.id} className="text-xs font-medium text-slate-700 flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200/60">
+                                  <div className="flex items-center gap-2 truncate">
+                                    <Video size={14} className="text-blue-600 shrink-0" />
+                                    <span className="truncate">{l.title}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => store.deleteLesson(course.id, m.id, l.id)}
+                                    className="text-slate-400 hover:text-red-600 p-0.5"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              ))
+                            )}
                           </div>
                         </div>
                       ))}
@@ -345,7 +451,7 @@ export default function AdminPanel() {
                   <select
                     value={selectedStudentId}
                     onChange={(e) => setSelectedStudentId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 bg-white"
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 bg-white font-medium"
                   >
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
@@ -360,7 +466,7 @@ export default function AdminPanel() {
                   <select
                     value={selectedCourseId}
                     onChange={(e) => setSelectedCourseId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 bg-white"
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 bg-white font-medium"
                   >
                     {courses.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -375,7 +481,7 @@ export default function AdminPanel() {
                   <select
                     value={selectedTariff}
                     onChange={(e) => setSelectedTariff(e.target.value as 'VIP' | 'Base')}
-                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 bg-white"
+                    className="w-full px-3 py-2 rounded-xl text-xs border border-slate-300 bg-white font-medium"
                   >
                     <option value="VIP">VIP (Полный доступ)</option>
                     <option value="Base">Базовый</option>

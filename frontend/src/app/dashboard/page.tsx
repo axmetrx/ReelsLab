@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useLMSStore } from '@/lib/store';
 import BottomDock from '@/components/BottomDock';
@@ -72,6 +71,16 @@ export default function StudentDashboard() {
     })
     .filter(Boolean);
 
+  const handleStartLearning = (course: any) => {
+    // Безопасный переход на первый урок или на обзор курса
+    const firstLessonId = course.modules?.[0]?.lessons?.[0]?.id;
+    if (firstLessonId) {
+      router.push(`/course/${course.id}/lesson/${firstLessonId}`);
+    } else {
+      router.push(`/course/${course.id}`);
+    }
+  };
+
   return (
     <div className="bg-[#F8FAFC] min-h-screen">
       <main className="pb-32 px-4 max-w-md mx-auto w-full box-border pt-4">
@@ -135,13 +144,14 @@ export default function StudentDashboard() {
                   {c.description}
                 </p>
 
-                <Link
-                  href={`/course/${c.id}`}
+                <button
+                  type="button"
+                  onClick={() => handleStartLearning(c)}
                   className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 px-4 text-sm font-semibold transition-all shadow-sm active:scale-[0.99] cursor-pointer"
                 >
                   <Play size={16} className="fill-current" />
                   <span>Перейти к обучению</span>
-                </Link>
+                </button>
               </div>
             ))}
           </div>

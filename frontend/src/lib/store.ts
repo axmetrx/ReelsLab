@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 export interface Lesson {
   id: string;
   title: string;
+  type?: 'VIDEO' | 'FILE' | 'HOMEWORK' | string;
   duration?: number;
   videoUrl?: string;
 }
@@ -101,7 +102,7 @@ export function useLMSStore() {
         name: name.trim() || email.split('@')[0],
         email: email.trim(),
         password: password || '123456',
-        grantedCourses: [], // Новый ученик создается БЕЗ доступных курсов
+        grantedCourses: [],
       };
 
       const updatedUsers = [newStudent, ...users.filter((u) => u.email !== email.trim())];
@@ -181,7 +182,23 @@ export function useLMSStore() {
       notifyStoreUpdate();
     },
 
-    addLesson: (courseId: string, moduleId: string, title: string, videoUrl?: string) => {
+    deleteModule: (courseId: string, moduleId: string) => {
+      const { courses } = getRawData();
+      const updated = courses.map((c) => {
+        if (c.id === courseId) {
+          return { ...c, modules: c.modules.filter((m) => m.id !== moduleId) };
+        }
+        return c;
+      });
+      localStorage.setItem(STORAGE_COURSES, JSON.stringify(updated));
+      notifyStoreUpdate();
+    },
+
+    addLesson: (
+      courseId: string,
+      moduleId: string,
+      lessonData: { title: string; type?: string; videoUrl?: string; duration?: number }
+    ) => {
       const { courses } = getRawData();
       const updated = courses.map((c) => {
         if (c.id === courseId) {
@@ -189,11 +206,32 @@ export function useLMSStore() {
             if (m.id === moduleId) {
               const newLesson: Lesson = {
                 id: uuid(),
-                title: title.trim(),
-                duration: 600,
-                videoUrl: videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+                title: lessonData.title.trim(),
+                type: lessonData.type || 'VIDEO',
+                duration: lessonData.duration || 10,
+                videoUrl:
+                  lessonData.videoUrl ||
+                  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
               };
               return { ...m, lessons: [...m.lessons, newLesson] };
+            }
+            return m;
+          });
+          return { ...c, modules: newModules };
+        }
+        return c;
+      });
+      localStorage.setItem(STORAGE_COURSES, JSON.stringify(updated));
+      notifyStoreUpdate();
+    },
+
+    deleteLesson: (courseId: string, moduleId: string, lessonId: string) => {
+      const { courses } = getRawData();
+      const updated = courses.map((c) => {
+        if (c.id === courseId) {
+          const newModules = c.modules.map((m) => {
+            if (m.id === moduleId) {
+              return { ...m, lessons: m.lessons.filter((l) => l.id !== lessonId) };
             }
             return m;
           });
@@ -227,7 +265,6 @@ export function useLMSStore() {
 
       localStorage.setItem(STORAGE_USERS, JSON.stringify(updatedUsers));
 
-      // Если обновился текущий авторизованный пользователь — обновляем его сессию
       if (currentUser && currentUser.id === studentId) {
         const updatedStudent = updatedUsers.find((u) => u.id === studentId);
         if (updatedStudent) {
@@ -245,8 +282,6 @@ export function useLMSStore() {
     // Admin Data Cleanup
     clearCourses: () => {
       const { users, currentUser } = getRawData();
-
-      // Очистить массивы курсов у всех учеников
       const updatedUsers = users.map((u) => ({ ...u, grantedCourses: [] }));
 
       localStorage.setItem(STORAGE_COURSES, JSON.stringify([]));
