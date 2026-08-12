@@ -517,12 +517,12 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {accesses.map((acc) => {
-                      const dateObj = new Date(acc.accessExpiresAt);
-                      const formattedDate = !isNaN(dateObj.getTime())
+                      const dateObj = acc.accessExpiresAt ? new Date(acc.accessExpiresAt) : null;
+                      const formattedDate = dateObj && !isNaN(dateObj.getTime())
                         ? dateObj.getFullYear() > 2030
                           ? 'Бессрочно'
                           : dateObj.toLocaleDateString('ru-RU')
-                        : acc.accessExpiresAt;
+                        : acc.accessExpiresAt || 'Не назначен';
 
                       const isCopied = copiedId === acc.id;
 
@@ -536,7 +536,7 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="py-4 px-5 font-semibold text-slate-800">
-                            {acc.courseTitle}
+                            {acc.courseTitle || 'Курс не назначен'}
                           </td>
                           <td className="py-4 px-5">
                             <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
@@ -553,7 +553,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 type="button"
-                                onClick={() => copyStudentLink(acc.id, acc.courseId)}
+                                onClick={() => copyStudentLink(acc.id, acc.courseId || '')}
                                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all border ${
                                   isCopied
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-300'

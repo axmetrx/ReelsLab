@@ -1,7 +1,5 @@
 const uuidv4 = () => Math.random().toString(36).substring(2, 11);
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-
 export interface AdminCourse {
   id: string;
   title: string;
@@ -32,91 +30,37 @@ export interface StudentAccess {
   id: string;
   userEmail: string;
   userName: string;
-  courseId: string;
-  courseTitle: string;
-  tariff: 'VIP' | 'PRO' | 'BASIC' | 'FREE' | string;
-  accessExpiresAt: string;
+  courseId: string | null;
+  courseTitle: string | null;
+  tariff: 'VIP' | 'PRO' | 'BASIC' | 'FREE' | 'Доступ не выдан' | string;
+  accessExpiresAt: string | null;
   createdAt: string;
 }
 
-// Initial default data
-const INITIAL_COURSES: AdminCourse[] = [
-  {
-    id: 'reelslab-course-01',
-    title: 'ReelsLab — Вирусный контент и монетизация',
-    description: 'Система, которая превращает блог в рост подписчиков и стабильный заработок.',
-    createdAt: new Date().toISOString(),
-    _count: { modules: 3, lessons: 10 },
-  },
-];
+// Single Source of Truth Persistent Store Manager
+const STORE_KEY_COURSES = 'reelslab_persistent_courses_v5';
+const STORE_KEY_MODULES = 'reelslab_persistent_modules_v5';
+const STORE_KEY_ACCESSES = 'reelslab_persistent_accesses_v5';
+const STORE_KEY_INITIALIZED = 'reelslab_store_initialized_v5';
 
-const INITIAL_MODULES: AdminModule[] = [
-  {
-    id: 'mod-1',
-    courseId: 'reelslab-course-01',
-    title: 'Введение и стратегия Reels',
-    order: 1,
-    lessons: [
-      { id: 'les-1', moduleId: 'mod-1', title: 'Урок 1: Формула вирусного видео в 2026 году', type: 'VIDEO', order: 1, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', duration: 720 },
-      { id: 'les-2', moduleId: 'mod-1', title: 'Урок 2: Позиционирование и целевая аудитория', type: 'VIDEO', order: 2, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', duration: 600 },
-      { id: 'les-3', moduleId: 'mod-1', title: 'Задание: Анализ ниши и конкурентов', type: 'HOMEWORK', order: 3 },
-    ],
-  },
-  {
-    id: 'mod-2',
-    courseId: 'reelslab-course-01',
-    title: 'Съемка, свет и динамичный монтаж',
-    order: 2,
-    lessons: [
-      { id: 'les-4', moduleId: 'mod-2', title: 'Урок 3: Настройка камеры телефона и постановка света', type: 'VIDEO', order: 1, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4', duration: 840 },
-      { id: 'les-5', moduleId: 'mod-2', title: 'Шаблон контент-плана и сценариев', type: 'FILE', order: 2 },
-      { id: 'les-6', moduleId: 'mod-2', title: 'Урок 4: Монтаж в CapCut: Склеивание и эффекты', type: 'VIDEO', order: 3, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4', duration: 900 },
-    ],
-  },
-  {
-    id: 'mod-3',
-    courseId: 'reelslab-course-01',
-    title: 'Воронки продаж и аналитика',
-    order: 3,
-    lessons: [
-      { id: 'les-8', moduleId: 'mod-3', title: 'Урок 5: Как вести зрителя из Reels в директ и продажи', type: 'VIDEO', order: 1, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4', duration: 960 },
-      { id: 'les-9', moduleId: 'mod-3', title: 'Урок 6: Аналитика охватов и удержание внимания', type: 'VIDEO', order: 2, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4', duration: 780 },
-    ],
-  },
-];
-
-const INITIAL_ACCESSES: StudentAccess[] = [
-  {
-    id: 'acc-1',
-    userEmail: 'maria@example.com',
-    userName: 'Мария Иванова',
-    courseId: 'reelslab-course-01',
-    courseTitle: 'ReelsLab — Вирусный контент и монетизация',
-    tariff: 'VIP',
-    accessExpiresAt: '2026-12-31T23:59:59.000Z',
-    createdAt: new Date().toISOString(),
-  },
-];
-
-// Reliable Persistent Store with explicit initialization flag
 function getPersistentStore() {
   if (typeof window === 'undefined') {
-    return { courses: INITIAL_COURSES, modules: INITIAL_MODULES, accesses: INITIAL_ACCESSES };
+    return { courses: [] as AdminCourse[], modules: [] as AdminModule[], accesses: [] as StudentAccess[] };
   }
 
-  const isInitialized = localStorage.getItem('reelslab_store_initialized_v4');
+  const isInitialized = localStorage.getItem(STORE_KEY_INITIALIZED);
 
   if (!isInitialized) {
-    localStorage.setItem('reelslab_persistent_courses_v4', JSON.stringify(INITIAL_COURSES));
-    localStorage.setItem('reelslab_persistent_modules_v4', JSON.stringify(INITIAL_MODULES));
-    localStorage.setItem('reelslab_persistent_accesses_v4', JSON.stringify(INITIAL_ACCESSES));
-    localStorage.setItem('reelslab_store_initialized_v4', 'true');
-    return { courses: INITIAL_COURSES, modules: INITIAL_MODULES, accesses: INITIAL_ACCESSES };
+    localStorage.setItem(STORE_KEY_COURSES, JSON.stringify([]));
+    localStorage.setItem(STORE_KEY_MODULES, JSON.stringify([]));
+    localStorage.setItem(STORE_KEY_ACCESSES, JSON.stringify([]));
+    localStorage.setItem(STORE_KEY_INITIALIZED, 'true');
+    return { courses: [], modules: [], accesses: [] };
   }
 
-  const storedCourses = localStorage.getItem('reelslab_persistent_courses_v4');
-  const storedModules = localStorage.getItem('reelslab_persistent_modules_v4');
-  const storedAccesses = localStorage.getItem('reelslab_persistent_accesses_v4');
+  const storedCourses = localStorage.getItem(STORE_KEY_COURSES);
+  const storedModules = localStorage.getItem(STORE_KEY_MODULES);
+  const storedAccesses = localStorage.getItem(STORE_KEY_ACCESSES);
 
   const courses: AdminCourse[] = storedCourses ? JSON.parse(storedCourses) : [];
   const modules: AdminModule[] = storedModules ? JSON.parse(storedModules) : [];
@@ -125,26 +69,26 @@ function getPersistentStore() {
   return { courses, modules, accesses };
 }
 
-function savePersistentCourses(courses: AdminCourse[]) {
+function saveCourses(courses: AdminCourse[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('reelslab_persistent_courses_v4', JSON.stringify(courses));
+    localStorage.setItem(STORE_KEY_COURSES, JSON.stringify(courses));
   }
 }
 
-function savePersistentModules(modules: AdminModule[]) {
+function saveModules(modules: AdminModule[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('reelslab_persistent_modules_v4', JSON.stringify(modules));
+    localStorage.setItem(STORE_KEY_MODULES, JSON.stringify(modules));
   }
 }
 
-function savePersistentAccesses(accesses: StudentAccess[]) {
+function saveAccesses(accesses: StudentAccess[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('reelslab_persistent_accesses_v4', JSON.stringify(accesses));
+    localStorage.setItem(STORE_KEY_ACCESSES, JSON.stringify(accesses));
   }
 }
 
 export const adminApi = {
-  // Courses
+  // Courses CRUD
   getCourses: async (): Promise<AdminCourse[]> => {
     const { courses } = getPersistentStore();
     return Promise.resolve(courses);
@@ -160,7 +104,7 @@ export const adminApi = {
       _count: { modules: 0, lessons: 0 },
     };
     const updated = [newCourse, ...courses];
-    savePersistentCourses(updated);
+    saveCourses(updated);
     return Promise.resolve(newCourse);
   },
 
@@ -170,32 +114,33 @@ export const adminApi = {
     if (!course) throw new Error('Course not found');
     if (data.title !== undefined) course.title = data.title;
     if (data.description !== undefined) course.description = data.description;
-    savePersistentCourses(courses);
+    saveCourses(courses);
     return Promise.resolve(course);
   },
 
   deleteCourse: async (id: string) => {
-    const { courses, modules } = getPersistentStore();
+    const { courses, modules, accesses } = getPersistentStore();
     const updatedCourses = courses.filter((c) => c.id !== id);
     const updatedModules = modules.filter((m) => m.courseId !== id);
 
-    savePersistentCourses(updatedCourses);
-    savePersistentModules(updatedModules);
+    // Убрать курс из доступов учеников при удалении курса
+    const updatedAccesses = accesses.map((acc) =>
+      acc.courseId === id ? { ...acc, courseId: null, courseTitle: null, tariff: 'Доступ не выдан' } : acc
+    );
+
+    saveCourses(updatedCourses);
+    saveModules(updatedModules);
+    saveAccesses(updatedAccesses);
     return Promise.resolve({ success: true });
   },
 
   // Modules & Course Tree
   getCourseTree: async (courseId: string) => {
     const { courses, modules } = getPersistentStore();
-    const course = courses.find((c) => c.id === courseId) || courses[0];
+    const course = courses.find((c) => c.id === courseId);
 
     if (!course) {
-      return Promise.resolve({
-        id: courseId,
-        title: 'Курс',
-        description: '',
-        modules: [],
-      });
+      return Promise.resolve(null);
     }
 
     const courseModules = modules
@@ -203,7 +148,12 @@ export const adminApi = {
       .sort((a, b) => a.order - b.order);
 
     return Promise.resolve({
-      ...course,
+      course: {
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        coverUrl: '/banner.jpg',
+      },
       modules: courseModules,
     });
   },
@@ -219,7 +169,7 @@ export const adminApi = {
       lessons: [],
     };
     modules.push(newModule);
-    savePersistentModules(modules);
+    saveModules(modules);
     return Promise.resolve(newModule);
   },
 
@@ -229,14 +179,14 @@ export const adminApi = {
     if (!mod) throw new Error('Module not found');
     if (data.title !== undefined) mod.title = data.title;
     if (data.order !== undefined) mod.order = data.order;
-    savePersistentModules(modules);
+    saveModules(modules);
     return Promise.resolve(mod);
   },
 
   deleteModule: async (id: string) => {
     const { modules } = getPersistentStore();
     const updatedModules = modules.filter((m) => m.id !== id);
-    savePersistentModules(updatedModules);
+    saveModules(updatedModules);
     return Promise.resolve({ success: true });
   },
 
@@ -255,7 +205,7 @@ export const adminApi = {
       videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     };
     mod.lessons.push(newLesson);
-    savePersistentModules(modules);
+    saveModules(modules);
     return Promise.resolve(newLesson);
   },
 
@@ -271,7 +221,7 @@ export const adminApi = {
         if (data.type !== undefined) lesson.type = data.type;
         if (data.videoUrl !== undefined) lesson.videoUrl = data.videoUrl;
         if (data.duration !== undefined) lesson.duration = data.duration;
-        savePersistentModules(modules);
+        saveModules(modules);
         return Promise.resolve(lesson);
       }
     }
@@ -283,24 +233,17 @@ export const adminApi = {
     for (const mod of modules) {
       mod.lessons = mod.lessons.filter((l) => l.id !== id);
     }
-    savePersistentModules(modules);
+    saveModules(modules);
     return Promise.resolve({ success: true });
   },
 
-  getPresignedUrl: async (courseId: string, fileName: string) => {
-    return Promise.resolve({
-      uploadUrl: 'https://storage.bunnycdn.com/mock',
-      cdnPath: `/videos/${courseId}/${fileName}`,
-      headers: {},
-    });
-  },
-
-  // Access Management (Ученики и доступы)
+  // Access Management & Registration Logic
   getAccesses: async (): Promise<StudentAccess[]> => {
     const { accesses } = getPersistentStore();
     return Promise.resolve(accesses);
   },
 
+  // Выдача доступа ТОЛЬКО администратором через форму
   grantAccess: async (data: {
     userEmail: string;
     userName?: string;
@@ -309,7 +252,12 @@ export const adminApi = {
     durationDays: number;
   }): Promise<StudentAccess> => {
     const { courses, accesses } = getPersistentStore();
-    const course = courses.find((c) => c.id === data.courseId) || courses[0];
+    const course = courses.find((c) => c.id === data.courseId);
+
+    if (!course) {
+      throw new Error('Выбранный курс не найден. Сначала создайте курс в панели администратора.');
+    }
+
     const expires = new Date();
     expires.setDate(expires.getDate() + (data.durationDays || 365));
 
@@ -317,15 +265,15 @@ export const adminApi = {
       id: uuidv4(),
       userEmail: data.userEmail,
       userName: data.userName || data.userEmail.split('@')[0],
-      courseId: course ? course.id : 'reelslab-course-01',
-      courseTitle: course ? course.title : 'ReelsLab',
+      courseId: course.id,
+      courseTitle: course.title,
       tariff: data.tariff || 'VIP',
       accessExpiresAt: expires.toISOString(),
       createdAt: new Date().toISOString(),
     };
 
     const updated = [newAccess, ...accesses.filter((a) => a.userEmail !== data.userEmail)];
-    savePersistentAccesses(updated);
+    saveAccesses(updated);
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('user_name', newAccess.userName);
@@ -336,38 +284,37 @@ export const adminApi = {
     return Promise.resolve(newAccess);
   },
 
+  // Регистрация НОВОГО ученика (БЕЗ автовыдачи VIP или курсов)
   registerStudentUser: async (userEmail: string, userName?: string): Promise<StudentAccess> => {
-    const { courses, accesses } = getPersistentStore();
-    const course = courses[0];
-    const expires = new Date('2026-12-31T23:59:59.000Z');
+    const { accesses } = getPersistentStore();
 
-    const newAccess: StudentAccess = {
+    const newStudent: StudentAccess = {
       id: uuidv4(),
       userEmail,
       userName: userName || userEmail.split('@')[0],
-      courseId: course ? course.id : 'reelslab-course-01',
-      courseTitle: course ? course.title : 'ReelsLab — Вирусный контент',
-      tariff: 'VIP',
-      accessExpiresAt: expires.toISOString(),
+      courseId: null,
+      courseTitle: null,
+      tariff: 'Доступ не выдан',
+      accessExpiresAt: null,
       createdAt: new Date().toISOString(),
     };
 
-    const updated = [newAccess, ...accesses.filter((a) => a.userEmail !== userEmail)];
-    savePersistentAccesses(updated);
+    const updated = [newStudent, ...accesses.filter((a) => a.userEmail !== userEmail)];
+    saveAccesses(updated);
 
     if (typeof window !== 'undefined') {
-      localStorage.setItem('user_name', newAccess.userName);
-      localStorage.setItem('user_email', newAccess.userEmail);
-      localStorage.setItem('activeStudentId', newAccess.id);
+      localStorage.setItem('user_name', newStudent.userName);
+      localStorage.setItem('user_email', newStudent.userEmail);
+      localStorage.setItem('activeStudentId', newStudent.id);
     }
 
-    return Promise.resolve(newAccess);
+    return Promise.resolve(newStudent);
   },
 
   revokeAccess: async (accessId: string) => {
     const { accesses } = getPersistentStore();
     const updated = accesses.filter((a) => a.id !== accessId);
-    savePersistentAccesses(updated);
+    saveAccesses(updated);
 
     if (typeof window !== 'undefined' && updated.length === 0) {
       localStorage.removeItem('user_name');
@@ -378,15 +325,14 @@ export const adminApi = {
     return Promise.resolve({ success: true });
   },
 
-  // Очистить ВСЕХ учеников и сбросить активное состояние
   deleteAllStudents: async () => {
-    savePersistentAccesses([]);
+    saveAccesses([]);
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user_name');
       localStorage.removeItem('user_email');
       localStorage.removeItem('activeStudentId');
-      localStorage.removeItem('reelslab_user_accesses');
+      localStorage.removeItem('currentUser');
     }
 
     return Promise.resolve({ success: true });

@@ -51,8 +51,10 @@ export default function CourseEditorPage() {
       setLoading(true);
       const data = await adminApi.getCourseTree(courseId);
       setCourse(data);
-      setTitle(data.title || '');
-      setDescription(data.description || '');
+      if (data && data.course) {
+        setTitle(data.course.title || '');
+        setDescription(data.course.description || '');
+      }
     } catch (err) {
       console.error('Error loading course editor:', err);
     } finally {

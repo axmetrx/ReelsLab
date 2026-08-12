@@ -11,11 +11,10 @@ import {
   LogOut,
   BookOpen,
   ChevronRight,
-  Settings,
-  Lock,
   UserX,
   ShieldCheck,
   UserPlus,
+  Clock,
 } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -71,8 +70,8 @@ export default function ProfilePage() {
     );
   }
 
-  // Если нет авторизованного ученика или очищена база учеников
-  if (!userName || !userEmail || userAccesses.length === 0) {
+  // 1. Если вообще нет зарегистрированного ученика
+  if (!userName || !userEmail) {
     return (
       <div className="bg-[#F8FAFC] min-h-screen">
         <main className="max-w-md sm:max-w-xl mx-auto px-4 py-12 pb-36 text-center">
@@ -81,9 +80,9 @@ export default function ProfilePage() {
               <UserX size={32} />
             </div>
 
-            <h1 className="text-lg font-bold text-slate-900 mb-1">Профиль не активен</h1>
+            <h1 className="text-lg font-bold text-slate-900 mb-1">Вы не авторизованы</h1>
             <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-              В системе нет активного ученика или список доступов был очищен администратором.
+              Пожалуйста, зарегистрируйтесь или войдите в свой аккаунт ученика.
             </p>
 
             <Link
@@ -99,7 +98,7 @@ export default function ProfilePage() {
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors"
             >
               <ShieldCheck size={14} />
-              <span>Перейти в Админ-панель</span>
+              <span>Панель преподавателя / админа</span>
             </Link>
           </div>
         </main>
@@ -107,6 +106,11 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  // Найти реальные активные курсы текущего ученика
+  const myGrantedCourses = userAccesses.filter(
+    (a) => a.userEmail === userEmail && a.courseId !== null
+  );
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen">
@@ -126,45 +130,65 @@ export default function ProfilePage() {
           </p>
 
           {/* Тарифный статус */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-            <span>Тариф {userAccesses[0]?.tariff || 'VIP'}</span>
-            <span className="text-amber-400">•</span>
-            <span>Доступа открыт</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+            <span>
+              {myGrantedCourses.length > 0
+                ? `Тариф ${myGrantedCourses[0].tariff}`
+                : 'Доступ не выдан'}
+            </span>
           </div>
         </div>
 
-        {/* Доступные курсы */}
+        {/* Секция доступных курсов */}
         <div className="mb-6">
           <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider px-1 mb-3">
-            Мои курсы и доступы
+            Мои курсы
           </h2>
 
-          <div className="space-y-3">
-            {userAccesses.map((access) => (
-              <Link
-                key={access.id}
-                href={`/course/${access.courseId}`}
-                className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex items-center justify-between hover:border-slate-200 transition-all group block"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                    <BookOpen size={20} />
+          {myGrantedCourses.length === 0 ? (
+            /* Пустое состояние для зарегистрированного ученика БЕЗ доступных курсов */
+            <div className="bg-white rounded-2xl p-8 border border-slate-100 shadow-sm text-center">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-3">
+                <Clock size={24} />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 mb-1">
+                У вас пока нет активных курсов
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto mb-4">
+                Ожидайте выдачи доступа администратором. После того как преподаватель откроет вам доступ, курс появится здесь.
+              </p>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-50 text-slate-600 border border-slate-100">
+                <span>Статус аккаунта: Зарегистрирован</span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myGrantedCourses.map((access) => (
+                <Link
+                  key={access.id}
+                  href={`/course/${access.courseId}`}
+                  className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex items-center justify-between hover:border-slate-200 transition-all group block"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                      <BookOpen size={20} />
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                        {access.courseTitle}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        Тариф {access.tariff} · Активный доступ
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                      {access.courseTitle}
-                    </h3>
-                    <p className="text-xs text-slate-500 font-medium mt-0.5">
-                      Тариф {access.tariff} · Активный доступ
-                    </p>
-                  </div>
-                </div>
-
-                <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" />
-              </Link>
-            ))}
-          </div>
+                  <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" />
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Кнопка выхода */}
@@ -177,7 +201,7 @@ export default function ProfilePage() {
           <span>Выйти из аккаунта</span>
         </button>
 
-        {/* Дискретная ссылка для преподавателя/админа */}
+        {/* Ссылка на панель админа */}
         <div className="text-center">
           <Link
             href="/admin"
@@ -189,7 +213,6 @@ export default function ProfilePage() {
         </div>
       </main>
 
-      {/* Floating Bottom Dock */}
       <BottomDock />
     </div>
   );

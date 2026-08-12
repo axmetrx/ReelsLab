@@ -19,6 +19,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
+      // Регистрация ученика БЕЗ автоматической выдачи VIP тарифа или курсов
       await adminApi.registerStudentUser(email, name || email.split('@')[0]);
 
       if (typeof window !== 'undefined') {
@@ -31,8 +32,9 @@ export default function RegisterPage() {
 
     setTimeout(() => {
       setLoading(false);
-      router.push('/course/reelslab-course-01');
-    }, 500);
+      // Перенаправление в Личный Кабинет (где показано сосотояние "Ожидайте выдачи доступа")
+      router.push('/profile');
+    }, 400);
   };
 
   return (
@@ -50,7 +52,7 @@ export default function RegisterPage() {
           Регистрация ученика
         </h2>
         <p className="mt-1 text-center text-sm text-slate-600">
-          Создайте аккаунт для доступа к онлайн-курсам
+          Создайте аккаунт в системе ReelsLab
         </p>
       </div>
 
@@ -68,7 +70,7 @@ export default function RegisterPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Мария Иванова"
+                  placeholder="Анастасия Смирнова"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border border-slate-300 outline-none focus:border-blue-600 font-medium"
@@ -117,7 +119,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl text-sm transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.99]"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl text-sm transition-all shadow-sm flex items-center justify-center gap-2 active:scale-[0.99] cursor-pointer"
             >
               <span>{loading ? 'Создание аккаунта...' : 'Зарегистрироваться'}</span>
               <ArrowRight size={16} />
@@ -126,7 +128,7 @@ export default function RegisterPage() {
 
           <div className="mt-6 pt-4 border-t border-slate-100 text-center">
             <span className="text-xs text-slate-500">
-              Уже зарегистрированы?{' '}
+              Уже есть аккаунт?{' '}
             </span>
             <Link
               href="/login"
