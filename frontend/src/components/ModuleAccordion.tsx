@@ -29,44 +29,44 @@ export default function ModuleAccordion({
     : 0;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-all duration-200">
+    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm transition-all duration-200">
       {/* Шапка модуля */}
       <button
         type="button"
-        className="w-full text-left p-4 sm:p-5 flex items-start gap-4 transition-colors hover:bg-slate-50/80 cursor-pointer"
+        className="w-full text-left p-4 flex items-start gap-3.5 transition-colors hover:bg-slate-50/80 cursor-pointer"
         onClick={onToggle}
       >
         {/* Номер модуля */}
         <div
-          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-extrabold ${
+          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-extrabold ${
             isCompleted
-              ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-              : 'bg-slate-100 text-slate-700 border border-slate-200'
+              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+              : 'bg-slate-100 text-slate-700 border border-slate-200/60'
           }`}
         >
-          {isCompleted ? <CheckCircle2 size={18} /> : module.order}
+          {isCompleted ? <CheckCircle2 size={16} /> : module.order}
         </div>
 
         {/* Заголовок и счетчик */}
         <div className="flex-1 min-w-0 pt-0.5">
-          <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
             {module.title}
           </h3>
 
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-xs font-semibold text-slate-500">
-              Пройдено {module.completedCount} из {module.totalCount} уроков
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-xs font-medium text-slate-500">
+              Пройдено {module.completedCount} из {module.totalCount}
             </span>
 
             {isCompleted && (
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-200">
                 Завершён ✓
               </span>
             )}
           </div>
 
           {!isCompleted && (
-            <div className="mt-2.5 max-w-[180px]">
+            <div className="mt-2 max-w-[160px]">
               <ProgressBar percent={progressPercent} size="sm" />
             </div>
           )}
@@ -75,7 +75,7 @@ export default function ModuleAccordion({
         {/* Chevron */}
         <div className="shrink-0 pt-1">
           <ChevronDown
-            size={20}
+            size={18}
             className={`text-slate-400 transition-transform duration-200 ${
               isOpen ? 'rotate-180 text-blue-600' : ''
             }`}

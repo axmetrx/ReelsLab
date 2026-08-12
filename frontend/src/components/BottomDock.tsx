@@ -15,26 +15,21 @@ export default function BottomDock() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center pb-3 pt-2 pointer-events-none">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center w-auto box-border pointer-events-none">
       {/* Floating White Dock Capsule */}
-      <div
-        className="pointer-events-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 rounded-full px-6 py-2.5 shadow-xl flex items-center gap-8 sm:gap-12"
-        style={{
-          boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.05)',
-        }}
-      >
+      <div className="pointer-events-auto bg-white/95 backdrop-blur-md border border-slate-200 rounded-full px-6 py-2.5 shadow-xl flex items-center gap-7 sm:gap-10">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== '#' && item.href !== '/notifications' && pathname.startsWith(item.href));
+          const isActive =
+            pathname === item.href ||
+            (item.href !== '/notifications' && item.href !== '/profile' && pathname.startsWith('/course/'));
 
           return (
             <Link
               key={item.label}
               href={item.href}
-              className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-all ${
-                isActive
-                  ? 'text-blue-600 scale-105 font-bold'
-                  : 'text-slate-400 hover:text-slate-700'
+              className={`flex flex-col items-center gap-0.5 text-[11px] font-semibold transition-all ${
+                isActive ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-700'
               }`}
             >
               <Icon size={20} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.75]'} />
@@ -45,8 +40,8 @@ export default function BottomDock() {
       </div>
 
       {/* Powered by caption */}
-      <span className="text-[10px] font-medium text-slate-400 mt-1 pointer-events-auto">
-        Сделано на <strong className="text-slate-600">15study</strong>
+      <span className="text-[10px] font-medium text-slate-400 mt-1 pointer-events-auto select-none">
+        Сделано на <strong className="text-slate-600 font-bold">15study</strong>
       </span>
     </div>
   );

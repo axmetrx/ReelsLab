@@ -1,20 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCourseTree } from '@/hooks/useCourseTree';
 import { Lesson } from '@/types/course';
+import BottomDock from '@/components/BottomDock';
 import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
   ChevronLeft,
-  Download,
-  FileText,
   List,
-  Lock,
-  Play,
   ShieldCheck,
 } from 'lucide-react';
 
@@ -26,9 +23,15 @@ export default function LessonPage() {
 
   const { data, loading, error, markLessonComplete } = useCourseTree(courseId);
 
-  // Собрать плоский список всех уроков и найти текущий
+  // Собрать плоский список всех уроков
   const { allLessons, currentIndex, currentLesson, currentModule } = useMemo(() => {
-    if (!data) return { allLessons: [] as { lesson: Lesson; moduleTitle: string }[], currentIndex: -1, currentLesson: null as Lesson | null, currentModule: null as string | null };
+    if (!data)
+      return {
+        allLessons: [] as { lesson: Lesson; moduleTitle: string }[],
+        currentIndex: -1,
+        currentLesson: null as Lesson | null,
+        currentModule: null as string | null,
+      };
 
     const flat: { lesson: Lesson; moduleTitle: string }[] = [];
     for (const m of data.modules) {
@@ -47,12 +50,12 @@ export default function LessonPage() {
   }, [data, lessonId]);
 
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
-  const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+  const nextLesson =
+    currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
 
   const handleComplete = async () => {
     if (!currentLesson) return;
     await markLessonComplete(currentLesson.id);
-    // Перейти к следующему уроку
     if (nextLesson) {
       router.push(`/course/${courseId}/lesson/${nextLesson.lesson.id}`);
     }
@@ -68,10 +71,10 @@ export default function LessonPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F4F4F6]">
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
-          <span className="text-sm font-medium text-slate-500">Загрузка урока...</span>
+          <div className="w-9 h-9 border-3 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+          <span className="text-xs font-semibold text-slate-500">Загрузка урока...</span>
         </div>
       </div>
     );
@@ -79,15 +82,15 @@ export default function LessonPage() {
 
   if (error || !data || !currentLesson) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F4F4F6] p-4">
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center max-w-sm w-full">
-          <h2 className="text-lg font-bold text-slate-900 mb-2">Урок не найден</h2>
-          <p className="text-sm text-slate-600 mb-4">Такого урока не существует или у вас нет к нему доступа.</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-4">
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm text-center max-w-xs w-full">
+          <h2 className="text-base font-bold text-slate-900 mb-1">Урок не найден</h2>
+          <p className="text-xs text-slate-500 mb-4">Урок не существует или у вас нет доступа.</p>
           <Link
             href={`/course/${courseId}`}
-            className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline"
           >
-            <ChevronLeft size={16} /> Вернуться к курсу
+            <ChevronLeft size={16} /> Назад к программе
           </Link>
         </div>
       </div>
@@ -96,7 +99,6 @@ export default function LessonPage() {
 
   const isVideo = currentLesson.type === 'VIDEO';
   const isHomework = currentLesson.type === 'HOMEWORK';
-  const isFile = currentLesson.type === 'FILE';
   const videoSrc =
     currentLesson.videoUrl && currentLesson.videoUrl.length > 5
       ? currentLesson.videoUrl
@@ -106,24 +108,23 @@ export default function LessonPage() {
   const totalLessons = allLessons.length;
 
   return (
-    <div className="min-h-screen bg-[#F4F4F6]">
-      {/* ─── ВЕРХНИЙ БАР: назад к курсу + номер урока ─── */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+    <div className="min-h-screen bg-[#F8FAFC] overflow-x-hidden">
+      {/* Верхняя панель урока */}
+      <header className="bg-white border-b border-slate-100 sticky top-0 z-40">
+        <div className="w-full max-w-md mx-auto px-4 box-border h-14 flex items-center justify-between">
           <Link
             href={`/course/${courseId}`}
-            className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors"
           >
             <ChevronLeft size={18} />
-            <span className="hidden sm:inline">Назад к программе</span>
-            <span className="sm:hidden">Назад</span>
+            <span>Курс</span>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-500">
-              Урок {lessonNumber} из {totalLessons}
+              {lessonNumber} из {totalLessons}
             </span>
-            <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-600 rounded-full transition-all"
                 style={{ width: `${Math.round((lessonNumber / totalLessons) * 100)}%` }}
@@ -133,18 +134,19 @@ export default function LessonPage() {
 
           <Link
             href={`/course/${courseId}`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-100"
           >
-            <List size={15} />
-            <span className="hidden sm:inline">Все уроки</span>
+            <List size={14} />
+            <span>Уроки</span>
           </Link>
         </div>
       </header>
 
-      {/* ─── ВИДЕОПЛЕЕР / КОНТЕНТ УРОКА ─── */}
-      <div className="max-w-4xl mx-auto">
+      {/* Основной контейнер c max-w-md и pb-32 */}
+      <main className="w-full max-w-md mx-auto px-4 box-border pt-3 pb-32">
+        {/* Адаптивный видеоплеер c rounded-xl и aspect-video */}
         {isVideo ? (
-          <div className="relative bg-black w-full aspect-video">
+          <div className="w-full aspect-video rounded-xl overflow-hidden shadow-sm bg-black my-3 relative group">
             <video
               key={currentLesson.id}
               controls
@@ -154,117 +156,100 @@ export default function LessonPage() {
               src={videoSrc}
               className="w-full h-full object-contain"
             />
-            {/* Водяной знак */}
-            <div className="absolute top-3 right-3 pointer-events-none bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white/80 border border-white/10 flex items-center gap-1">
-              <ShieldCheck size={12} className="text-blue-400" />
+            <div className="absolute top-2.5 right-2.5 pointer-events-none bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full text-[9px] font-bold text-white/90 border border-white/10 flex items-center gap-1">
+              <ShieldCheck size={11} className="text-blue-400" />
               <span>ReelsLab Protected</span>
             </div>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 px-6 py-16 text-center border-b border-slate-200">
-            <div className="w-16 h-16 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm">
+          <div className="w-full rounded-xl overflow-hidden border border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/30 p-6 text-center my-3 shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center mx-auto mb-2 text-xl shadow-2xs">
               {isHomework ? '✍️' : '📄'}
             </div>
-            <span className="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 mb-3 inline-block">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100 inline-block mb-2">
               {isHomework ? 'Домашнее задание' : 'Материал для скачивания'}
             </span>
-            <h2 className="text-xl font-bold text-slate-900 mt-3 max-w-lg mx-auto">
-              {currentLesson.title}
-            </h2>
-            <p className="text-sm text-slate-600 mt-2 max-w-md mx-auto leading-relaxed">
-              {isHomework
-                ? 'Выполните практическое задание, затем нажмите «Урок пройден» и переходите дальше.'
-                : 'Скачайте учебный материал и изучите его перед следующим видеоуроком.'}
-            </p>
+            <h2 className="text-base font-bold text-slate-900 leading-snug">{currentLesson.title}</h2>
           </div>
         )}
-      </div>
 
-      {/* ─── ИНФОРМАЦИЯ ОБ УРОКЕ + КНОПКИ ─── */}
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Заголовок и модуль */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                {currentModule}
-              </span>
-              <h1 className="text-lg sm:text-xl font-bold text-slate-900 mt-1 leading-snug">
-                {currentLesson.title}
-              </h1>
-              {currentLesson.duration && (
-                <span className="text-xs font-semibold text-slate-500 mt-1 inline-block">
-                  ⏱ {Math.round(currentLesson.duration / 60)} минут
-                </span>
-              )}
-            </div>
+        {/* Информационная карточка урока */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm mb-4">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+            {currentModule}
+          </span>
+          <h1 className="text-base font-bold text-slate-900 leading-snug mb-3">
+            {currentLesson.title}
+          </h1>
 
-            <button
-              type="button"
-              onClick={handleComplete}
-              className={`inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all shadow-sm shrink-0 active:scale-95 ${
-                currentLesson.isCompleted
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-              }`}
-            >
-              <CheckCircle2 size={20} />
-              <span>{currentLesson.isCompleted ? 'Урок пройден ✓' : 'Отметить пройденным'}</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleComplete}
+            className={`w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-xs transition-all shadow-2xs active:scale-[0.99] ${
+              currentLesson.isCompleted
+                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
+          >
+            <CheckCircle2 size={16} />
+            <span>{currentLesson.isCompleted ? 'Урок пройден ✓' : 'Отметить пройденным'}</span>
+          </button>
         </div>
 
-        {/* Навигация: Предыдущий / Следующий урок */}
-        <div className="flex items-stretch gap-3">
-          {/* Кнопка Назад */}
+        {/* Навигация по урокам: строго 2 колонки (grid grid-cols-2 gap-3 w-full) */}
+        <div className="grid grid-cols-2 gap-3 w-full box-border">
+          {/* Кнопка Предыдущий урок */}
           {prevLesson ? (
             <button
               type="button"
               onClick={goPrev}
-              className="flex-1 flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-left group shadow-xs"
+              className="w-full flex items-center gap-2 p-3 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 transition-all text-left shadow-sm box-border"
             >
-              <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center shrink-0 transition-colors">
-                <ArrowLeft size={18} className="text-slate-600" />
+              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                <ArrowLeft size={16} className="text-slate-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Предыдущий урок
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Назад
                 </span>
-                <p className="text-sm font-bold text-slate-900 truncate mt-0.5">
+                <p className="text-xs font-bold text-slate-900 truncate mt-0.5">
                   {prevLesson.lesson.title}
                 </p>
               </div>
             </button>
           ) : (
-            <div className="flex-1" />
+            <div className="w-full bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 p-3 opacity-40" />
           )}
 
-          {/* Кнопка Далее */}
+          {/* Кнопка Следующий урок */}
           {nextLesson ? (
             <button
               type="button"
               onClick={goNext}
-              className="flex-1 flex items-center gap-3 p-4 bg-blue-600 rounded-2xl hover:bg-blue-700 transition-all text-left group shadow-sm"
+              className="w-full flex items-center justify-between gap-2 p-3 bg-blue-600 hover:bg-blue-700 transition-all text-left shadow-sm rounded-2xl text-white box-border"
             >
               <div className="flex-1 min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
-                  Следующий урок
+                <span className="text-[9px] font-bold uppercase tracking-wider text-blue-200 block">
+                  Далее
                 </span>
-                <p className="text-sm font-bold text-white truncate mt-0.5">
+                <p className="text-xs font-bold text-white truncate mt-0.5">
                   {nextLesson.lesson.title}
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                <ArrowRight size={18} className="text-white" />
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                <ArrowRight size={16} className="text-white" />
               </div>
             </button>
           ) : (
-            <div className="flex-1 flex items-center justify-center p-4 bg-emerald-50 rounded-2xl border border-emerald-200">
-              <span className="text-sm font-bold text-emerald-700">🎉 Вы прошли все уроки курса!</span>
+            <div className="w-full bg-emerald-50 rounded-2xl border border-emerald-200 p-3 flex items-center justify-center text-center">
+              <span className="text-[11px] font-bold text-emerald-700">Курс пройден! 🎉</span>
             </div>
           )}
         </div>
-      </div>
+      </main>
+
+      {/* Плавающая нижняя панель навигации */}
+      <BottomDock />
     </div>
   );
 }
