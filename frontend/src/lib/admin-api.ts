@@ -1,5 +1,7 @@
 const uuidv4 = () => Math.random().toString(36).substring(2, 11);
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
 export interface AdminCourse {
   id: string;
   title: string;
@@ -37,8 +39,8 @@ export interface StudentAccess {
   createdAt: string;
 }
 
-// Initial Data Store
-let mockCourses: AdminCourse[] = [
+// Initial default data if store is completely empty
+const INITIAL_COURSES: AdminCourse[] = [
   {
     id: 'reelslab-course-01',
     title: 'ReelsLab — Вирусный контент и монетизация',
@@ -46,26 +48,19 @@ let mockCourses: AdminCourse[] = [
     createdAt: new Date().toISOString(),
     _count: { modules: 3, lessons: 10 },
   },
-  {
-    id: 'course-capcut-02',
-    title: 'Продвинутый монтаж в CapCut',
-    description: 'Секреты динамичного монтажа, работы со светом и цвета для Reels.',
-    createdAt: new Date().toISOString(),
-    _count: { modules: 1, lessons: 3 },
-  }
 ];
 
-let mockModules: AdminModule[] = [
+const INITIAL_MODULES: AdminModule[] = [
   {
     id: 'mod-1',
     courseId: 'reelslab-course-01',
     title: 'Введение и стратегия Reels',
     order: 1,
     lessons: [
-      { id: 'les-1', moduleId: 'mod-1', title: 'Формула вирусного видео в 2026 году', type: 'VIDEO', order: 1, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', duration: 720 },
-      { id: 'les-2', moduleId: 'mod-1', title: 'Позиционирование и целевая аудитория', type: 'VIDEO', order: 2, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', duration: 600 },
-      { id: 'les-3', moduleId: 'mod-1', title: 'Домашнее задание: Анализ ниши и конкурентов', type: 'HOMEWORK', order: 3 },
-    ]
+      { id: 'les-1', moduleId: 'mod-1', title: 'Урок 1: Формула вирусного видео в 2026 году', type: 'VIDEO', order: 1, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', duration: 720 },
+      { id: 'les-2', moduleId: 'mod-1', title: 'Урок 2: Позиционирование и целевая аудитория', type: 'VIDEO', order: 2, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', duration: 600 },
+      { id: 'les-3', moduleId: 'mod-1', title: 'Задание: Анализ ниши и конкурентов', type: 'HOMEWORK', order: 3 },
+    ],
   },
   {
     id: 'mod-2',
@@ -73,10 +68,10 @@ let mockModules: AdminModule[] = [
     title: 'Съемка, свет и динамичный монтаж',
     order: 2,
     lessons: [
-      { id: 'les-4', moduleId: 'mod-2', title: 'Настройка камеры телефона и постановка света', type: 'VIDEO', order: 1, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4', duration: 840 },
+      { id: 'les-4', moduleId: 'mod-2', title: 'Урок 3: Настройка камеры телефона и постановка света', type: 'VIDEO', order: 1, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4', duration: 840 },
       { id: 'les-5', moduleId: 'mod-2', title: 'Шаблон контент-плана и сценариев', type: 'FILE', order: 2 },
-      { id: 'les-6', moduleId: 'mod-2', title: 'Монтаж в CapCut: Склеивание и эффекты', type: 'VIDEO', order: 3, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4', duration: 900 }
-    ]
+      { id: 'les-6', moduleId: 'mod-2', title: 'Урок 4: Монтаж в CapCut: Склеивание и эффекты', type: 'VIDEO', order: 3, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4', duration: 900 },
+    ],
   },
   {
     id: 'mod-3',
@@ -84,13 +79,13 @@ let mockModules: AdminModule[] = [
     title: 'Воронки продаж и аналитика',
     order: 3,
     lessons: [
-      { id: 'les-8', moduleId: 'mod-3', title: 'Как вести зрителя из Reels в директ и продажи', type: 'VIDEO', order: 1, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4', duration: 960 },
-      { id: 'les-9', moduleId: 'mod-3', title: 'Аналитика охватов и удержание внимания', type: 'VIDEO', order: 2, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4', duration: 780 }
-    ]
-  }
+      { id: 'les-8', moduleId: 'mod-3', title: 'Урок 5: Как вести зрителя из Reels в директ и продажи', type: 'VIDEO', order: 1, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4', duration: 960 },
+      { id: 'les-9', moduleId: 'mod-3', title: 'Урок 6: Аналитика охватов и удержание внимания', type: 'VIDEO', order: 2, videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4', duration: 780 },
+    ],
+  },
 ];
 
-let defaultStudentAccesses: StudentAccess[] = [
+const INITIAL_ACCESSES: StudentAccess[] = [
   {
     id: 'acc-1',
     userEmail: 'maria@example.com',
@@ -110,36 +105,57 @@ let defaultStudentAccesses: StudentAccess[] = [
     tariff: 'PRO',
     accessExpiresAt: '2026-08-31T23:59:59.000Z',
     createdAt: new Date().toISOString(),
-  }
+  },
 ];
 
-function getStoredAccesses(): StudentAccess[] {
-  if (typeof window === 'undefined') return defaultStudentAccesses;
-  const stored = localStorage.getItem('reelslab_admin_student_accesses');
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch (e) {
-      return defaultStudentAccesses;
-    }
+// Persistent State Helper (localStorage + REST API sync)
+function getPersistentStore() {
+  if (typeof window === 'undefined') {
+    return { courses: INITIAL_COURSES, modules: INITIAL_MODULES, accesses: INITIAL_ACCESSES };
   }
-  localStorage.setItem('reelslab_admin_student_accesses', JSON.stringify(defaultStudentAccesses));
-  return defaultStudentAccesses;
+
+  const storedCourses = localStorage.getItem('reelslab_persistent_courses_v3');
+  const storedModules = localStorage.getItem('reelslab_persistent_modules_v3');
+  const storedAccesses = localStorage.getItem('reelslab_persistent_accesses_v3');
+
+  const courses: AdminCourse[] = storedCourses ? JSON.parse(storedCourses) : INITIAL_COURSES;
+  const modules: AdminModule[] = storedModules ? JSON.parse(storedModules) : INITIAL_MODULES;
+  const accesses: StudentAccess[] = storedAccesses ? JSON.parse(storedAccesses) : INITIAL_ACCESSES;
+
+  if (!storedCourses) localStorage.setItem('reelslab_persistent_courses_v3', JSON.stringify(INITIAL_COURSES));
+  if (!storedModules) localStorage.setItem('reelslab_persistent_modules_v3', JSON.stringify(INITIAL_MODULES));
+  if (!storedAccesses) localStorage.setItem('reelslab_persistent_accesses_v3', JSON.stringify(INITIAL_ACCESSES));
+
+  return { courses, modules, accesses };
 }
 
-function saveStoredAccesses(accesses: StudentAccess[]) {
+function savePersistentCourses(courses: AdminCourse[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('reelslab_admin_student_accesses', JSON.stringify(accesses));
+    localStorage.setItem('reelslab_persistent_courses_v3', JSON.stringify(courses));
+  }
+}
+
+function savePersistentModules(modules: AdminModule[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('reelslab_persistent_modules_v3', JSON.stringify(modules));
+  }
+}
+
+function savePersistentAccesses(accesses: StudentAccess[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('reelslab_persistent_accesses_v3', JSON.stringify(accesses));
   }
 }
 
 export const adminApi = {
   // Courses
   getCourses: async (): Promise<AdminCourse[]> => {
-    return Promise.resolve([...mockCourses]);
+    const { courses } = getPersistentStore();
+    return Promise.resolve(courses);
   },
 
   createCourse: async (data: { title: string; description?: string }): Promise<AdminCourse> => {
+    const { courses } = getPersistentStore();
     const newCourse: AdminCourse = {
       id: uuidv4(),
       title: data.title,
@@ -147,39 +163,75 @@ export const adminApi = {
       createdAt: new Date().toISOString(),
       _count: { modules: 0, lessons: 0 },
     };
-    mockCourses.unshift(newCourse);
+    const updated = [newCourse, ...courses];
+    savePersistentCourses(updated);
+
+    // REST API call
+    try {
+      fetch(`${API_URL}/admin/courses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
+        body: JSON.stringify(data),
+      }).catch(() => {});
+    } catch (e) {}
+
     return Promise.resolve(newCourse);
   },
 
   updateCourse: async (id: string, data: { title?: string; description?: string }): Promise<AdminCourse> => {
-    const course = mockCourses.find((c) => c.id === id);
+    const { courses } = getPersistentStore();
+    const course = courses.find((c) => c.id === id);
     if (!course) throw new Error('Course not found');
     if (data.title !== undefined) course.title = data.title;
     if (data.description !== undefined) course.description = data.description;
+    savePersistentCourses(courses);
+
+    try {
+      fetch(`${API_URL}/admin/courses/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
+        body: JSON.stringify(data),
+      }).catch(() => {});
+    } catch (e) {}
+
     return Promise.resolve(course);
   },
 
   deleteCourse: async (id: string) => {
-    mockCourses = mockCourses.filter((c) => c.id !== id);
-    mockModules = mockModules.filter((m) => m.courseId !== id);
+    const { courses, modules } = getPersistentStore();
+    const updatedCourses = courses.filter((c) => c.id !== id);
+    const updatedModules = modules.filter((m) => m.courseId !== id);
+
+    savePersistentCourses(updatedCourses);
+    savePersistentModules(updatedModules);
+
+    try {
+      fetch(`${API_URL}/admin/courses/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': 'admin' },
+      }).catch(() => {});
+    } catch (e) {}
+
     return Promise.resolve({ success: true });
   },
 
-  // Modules
+  // Modules & Course Tree
   getCourseTree: async (courseId: string) => {
-    const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
-    const modules = mockModules
+    const { courses, modules } = getPersistentStore();
+    const course = courses.find((c) => c.id === courseId) || courses[0];
+    const courseModules = modules
       .filter((m) => m.courseId === course.id)
       .sort((a, b) => a.order - b.order);
 
     return Promise.resolve({
       ...course,
-      modules,
+      modules: courseModules,
     });
   },
 
   createModule: async (courseId: string, data: { title: string }): Promise<AdminModule> => {
-    const courseModules = mockModules.filter((m) => m.courseId === courseId);
+    const { modules } = getPersistentStore();
+    const courseModules = modules.filter((m) => m.courseId === courseId);
     const newModule: AdminModule = {
       id: uuidv4(),
       courseId,
@@ -187,26 +239,58 @@ export const adminApi = {
       order: courseModules.length + 1,
       lessons: [],
     };
-    mockModules.push(newModule);
+    modules.push(newModule);
+    savePersistentModules(modules);
+
+    try {
+      fetch(`${API_URL}/admin/courses/${courseId}/modules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
+        body: JSON.stringify(data),
+      }).catch(() => {});
+    } catch (e) {}
+
     return Promise.resolve(newModule);
   },
 
   updateModule: async (id: string, data: { title?: string; order?: number }): Promise<AdminModule> => {
-    const mod = mockModules.find((m) => m.id === id);
+    const { modules } = getPersistentStore();
+    const mod = modules.find((m) => m.id === id);
     if (!mod) throw new Error('Module not found');
     if (data.title !== undefined) mod.title = data.title;
     if (data.order !== undefined) mod.order = data.order;
+    savePersistentModules(modules);
+
+    try {
+      fetch(`${API_URL}/admin/modules/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
+        body: JSON.stringify(data),
+      }).catch(() => {});
+    } catch (e) {}
+
     return Promise.resolve(mod);
   },
 
   deleteModule: async (id: string) => {
-    mockModules = mockModules.filter((m) => m.id !== id);
+    const { modules } = getPersistentStore();
+    const updatedModules = modules.filter((m) => m.id !== id);
+    savePersistentModules(updatedModules);
+
+    try {
+      fetch(`${API_URL}/admin/modules/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': 'admin' },
+      }).catch(() => {});
+    } catch (e) {}
+
     return Promise.resolve({ success: true });
   },
 
   // Lessons
   createLesson: async (moduleId: string, data: { title: string; type: string }): Promise<AdminLesson> => {
-    const mod = mockModules.find((m) => m.id === moduleId);
+    const { modules } = getPersistentStore();
+    const mod = modules.find((m) => m.id === moduleId);
     if (!mod) throw new Error('Module not found');
 
     const newLesson: AdminLesson = {
@@ -215,9 +299,19 @@ export const adminApi = {
       title: data.title,
       type: data.type || 'VIDEO',
       order: mod.lessons.length + 1,
-      videoUrl: '',
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     };
     mod.lessons.push(newLesson);
+    savePersistentModules(modules);
+
+    try {
+      fetch(`${API_URL}/admin/modules/${moduleId}/lessons`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
+        body: JSON.stringify(data),
+      }).catch(() => {});
+    } catch (e) {}
+
     return Promise.resolve(newLesson);
   },
 
@@ -225,13 +319,24 @@ export const adminApi = {
     id: string,
     data: { title?: string; type?: string; videoUrl?: string; duration?: number }
   ): Promise<AdminLesson> => {
-    for (const mod of mockModules) {
+    const { modules } = getPersistentStore();
+    for (const mod of modules) {
       const lesson = mod.lessons.find((l) => l.id === id);
       if (lesson) {
         if (data.title !== undefined) lesson.title = data.title;
         if (data.type !== undefined) lesson.type = data.type;
         if (data.videoUrl !== undefined) lesson.videoUrl = data.videoUrl;
         if (data.duration !== undefined) lesson.duration = data.duration;
+        savePersistentModules(modules);
+
+        try {
+          fetch(`${API_URL}/admin/lessons/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
+            body: JSON.stringify(data),
+          }).catch(() => {});
+        } catch (e) {}
+
         return Promise.resolve(lesson);
       }
     }
@@ -239,13 +344,22 @@ export const adminApi = {
   },
 
   deleteLesson: async (id: string) => {
-    for (const mod of mockModules) {
+    const { modules } = getPersistentStore();
+    for (const mod of modules) {
       mod.lessons = mod.lessons.filter((l) => l.id !== id);
     }
+    savePersistentModules(modules);
+
+    try {
+      fetch(`${API_URL}/admin/lessons/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': 'admin' },
+      }).catch(() => {});
+    } catch (e) {}
+
     return Promise.resolve({ success: true });
   },
 
-  // Presigned URL mock for direct video upload
   getPresignedUrl: async (courseId: string, fileName: string) => {
     return Promise.resolve({
       uploadUrl: 'https://storage.bunnycdn.com/mock',
@@ -256,7 +370,8 @@ export const adminApi = {
 
   // Access Management (Ученики и доступы)
   getAccesses: async (): Promise<StudentAccess[]> => {
-    return Promise.resolve(getStoredAccesses());
+    const { accesses } = getPersistentStore();
+    return Promise.resolve(accesses);
   },
 
   grantAccess: async (data: {
@@ -266,8 +381,8 @@ export const adminApi = {
     tariff: string;
     durationDays: number;
   }): Promise<StudentAccess> => {
-    const accesses = getStoredAccesses();
-    const course = mockCourses.find((c) => c.id === data.courseId) || mockCourses[0];
+    const { courses, accesses } = getPersistentStore();
+    const course = courses.find((c) => c.id === data.courseId) || courses[0];
     const expires = new Date();
     expires.setDate(expires.getDate() + (data.durationDays || 365));
 
@@ -283,35 +398,35 @@ export const adminApi = {
     };
 
     const updated = [newAccess, ...accesses.filter((a) => a.userEmail !== data.userEmail)];
-    saveStoredAccesses(updated);
+    savePersistentAccesses(updated);
     return Promise.resolve(newAccess);
   },
 
   registerStudentUser: async (userEmail: string, userName?: string): Promise<StudentAccess> => {
-    const accesses = getStoredAccesses();
-    const course = mockCourses[0];
+    const { courses, accesses } = getPersistentStore();
+    const course = courses[0];
     const expires = new Date('2026-12-31T23:59:59.000Z');
 
     const newAccess: StudentAccess = {
       id: uuidv4(),
       userEmail,
       userName: userName || userEmail.split('@')[0],
-      courseId: course.id,
-      courseTitle: course.title,
+      courseId: course ? course.id : 'reelslab-course-01',
+      courseTitle: course ? course.title : 'ReelsLab — Вирусный контент',
       tariff: 'VIP',
       accessExpiresAt: expires.toISOString(),
       createdAt: new Date().toISOString(),
     };
 
     const updated = [newAccess, ...accesses.filter((a) => a.userEmail !== userEmail)];
-    saveStoredAccesses(updated);
+    savePersistentAccesses(updated);
     return Promise.resolve(newAccess);
   },
 
   revokeAccess: async (accessId: string) => {
-    const accesses = getStoredAccesses();
+    const { accesses } = getPersistentStore();
     const updated = accesses.filter((a) => a.id !== accessId);
-    saveStoredAccesses(updated);
+    savePersistentAccesses(updated);
     return Promise.resolve({ success: true });
   },
 };
