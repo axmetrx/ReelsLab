@@ -177,7 +177,7 @@ export default function AdminPanel() {
             previewVideoUrl.includes('youtu.be') ||
             previewVideoUrl.includes('vimeo.com') ||
             previewVideoUrl.includes('kinescope.io') ? (
-              <iframe src={previewVideoUrl} className="w-full h-full border-0" allowFullScreen />
+              <iframe src={previewVideoUrl} className="w-full h-full border-0" allowFullScreen></iframe>
             ) : (
               <video controls autoPlay src={previewVideoUrl} className="w-full h-full object-contain" />
             )}

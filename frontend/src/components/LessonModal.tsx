@@ -162,7 +162,7 @@ export default function LessonModal({
               />
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
-              Поддерживаются прямые ссылочные потоки `.mp4` и встроенные `<iframe>` плееры (Kinescope, Vimeo, YouTube).
+              Поддерживаются прямые видеопотоки .mp4 и фреймы плееров (Kinescope, Vimeo, YouTube).
             </p>
           </div>
 
