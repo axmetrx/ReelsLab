@@ -39,7 +39,7 @@ export interface StudentAccess {
   createdAt: string;
 }
 
-// Initial default data if store is completely empty
+// Initial default data
 const INITIAL_COURSES: AdminCourse[] = [
   {
     id: 'reelslab-course-01',
@@ -96,54 +96,50 @@ const INITIAL_ACCESSES: StudentAccess[] = [
     accessExpiresAt: '2026-12-31T23:59:59.000Z',
     createdAt: new Date().toISOString(),
   },
-  {
-    id: 'acc-2',
-    userEmail: 'alexey@example.com',
-    userName: 'Алексей Петров',
-    courseId: 'reelslab-course-01',
-    courseTitle: 'ReelsLab — Вирусный контент и монетизация',
-    tariff: 'PRO',
-    accessExpiresAt: '2026-08-31T23:59:59.000Z',
-    createdAt: new Date().toISOString(),
-  },
 ];
 
-// Persistent State Helper (localStorage + REST API sync)
+// Reliable Persistent Store with explicit initialization flag
 function getPersistentStore() {
   if (typeof window === 'undefined') {
     return { courses: INITIAL_COURSES, modules: INITIAL_MODULES, accesses: INITIAL_ACCESSES };
   }
 
-  const storedCourses = localStorage.getItem('reelslab_persistent_courses_v3');
-  const storedModules = localStorage.getItem('reelslab_persistent_modules_v3');
-  const storedAccesses = localStorage.getItem('reelslab_persistent_accesses_v3');
+  const isInitialized = localStorage.getItem('reelslab_store_initialized_v4');
 
-  const courses: AdminCourse[] = storedCourses ? JSON.parse(storedCourses) : INITIAL_COURSES;
-  const modules: AdminModule[] = storedModules ? JSON.parse(storedModules) : INITIAL_MODULES;
-  const accesses: StudentAccess[] = storedAccesses ? JSON.parse(storedAccesses) : INITIAL_ACCESSES;
+  if (!isInitialized) {
+    localStorage.setItem('reelslab_persistent_courses_v4', JSON.stringify(INITIAL_COURSES));
+    localStorage.setItem('reelslab_persistent_modules_v4', JSON.stringify(INITIAL_MODULES));
+    localStorage.setItem('reelslab_persistent_accesses_v4', JSON.stringify(INITIAL_ACCESSES));
+    localStorage.setItem('reelslab_store_initialized_v4', 'true');
+    return { courses: INITIAL_COURSES, modules: INITIAL_MODULES, accesses: INITIAL_ACCESSES };
+  }
 
-  if (!storedCourses) localStorage.setItem('reelslab_persistent_courses_v3', JSON.stringify(INITIAL_COURSES));
-  if (!storedModules) localStorage.setItem('reelslab_persistent_modules_v3', JSON.stringify(INITIAL_MODULES));
-  if (!storedAccesses) localStorage.setItem('reelslab_persistent_accesses_v3', JSON.stringify(INITIAL_ACCESSES));
+  const storedCourses = localStorage.getItem('reelslab_persistent_courses_v4');
+  const storedModules = localStorage.getItem('reelslab_persistent_modules_v4');
+  const storedAccesses = localStorage.getItem('reelslab_persistent_accesses_v4');
+
+  const courses: AdminCourse[] = storedCourses ? JSON.parse(storedCourses) : [];
+  const modules: AdminModule[] = storedModules ? JSON.parse(storedModules) : [];
+  const accesses: StudentAccess[] = storedAccesses ? JSON.parse(storedAccesses) : [];
 
   return { courses, modules, accesses };
 }
 
 function savePersistentCourses(courses: AdminCourse[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('reelslab_persistent_courses_v3', JSON.stringify(courses));
+    localStorage.setItem('reelslab_persistent_courses_v4', JSON.stringify(courses));
   }
 }
 
 function savePersistentModules(modules: AdminModule[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('reelslab_persistent_modules_v3', JSON.stringify(modules));
+    localStorage.setItem('reelslab_persistent_modules_v4', JSON.stringify(modules));
   }
 }
 
 function savePersistentAccesses(accesses: StudentAccess[]) {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('reelslab_persistent_accesses_v3', JSON.stringify(accesses));
+    localStorage.setItem('reelslab_persistent_accesses_v4', JSON.stringify(accesses));
   }
 }
 
@@ -165,16 +161,6 @@ export const adminApi = {
     };
     const updated = [newCourse, ...courses];
     savePersistentCourses(updated);
-
-    // REST API call
-    try {
-      fetch(`${API_URL}/admin/courses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
-        body: JSON.stringify(data),
-      }).catch(() => {});
-    } catch (e) {}
-
     return Promise.resolve(newCourse);
   },
 
@@ -185,15 +171,6 @@ export const adminApi = {
     if (data.title !== undefined) course.title = data.title;
     if (data.description !== undefined) course.description = data.description;
     savePersistentCourses(courses);
-
-    try {
-      fetch(`${API_URL}/admin/courses/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
-        body: JSON.stringify(data),
-      }).catch(() => {});
-    } catch (e) {}
-
     return Promise.resolve(course);
   },
 
@@ -204,14 +181,6 @@ export const adminApi = {
 
     savePersistentCourses(updatedCourses);
     savePersistentModules(updatedModules);
-
-    try {
-      fetch(`${API_URL}/admin/courses/${id}`, {
-        method: 'DELETE',
-        headers: { 'x-user-id': 'admin' },
-      }).catch(() => {});
-    } catch (e) {}
-
     return Promise.resolve({ success: true });
   },
 
@@ -219,6 +188,16 @@ export const adminApi = {
   getCourseTree: async (courseId: string) => {
     const { courses, modules } = getPersistentStore();
     const course = courses.find((c) => c.id === courseId) || courses[0];
+
+    if (!course) {
+      return Promise.resolve({
+        id: courseId,
+        title: 'Курс',
+        description: '',
+        modules: [],
+      });
+    }
+
     const courseModules = modules
       .filter((m) => m.courseId === course.id)
       .sort((a, b) => a.order - b.order);
@@ -241,15 +220,6 @@ export const adminApi = {
     };
     modules.push(newModule);
     savePersistentModules(modules);
-
-    try {
-      fetch(`${API_URL}/admin/courses/${courseId}/modules`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
-        body: JSON.stringify(data),
-      }).catch(() => {});
-    } catch (e) {}
-
     return Promise.resolve(newModule);
   },
 
@@ -260,15 +230,6 @@ export const adminApi = {
     if (data.title !== undefined) mod.title = data.title;
     if (data.order !== undefined) mod.order = data.order;
     savePersistentModules(modules);
-
-    try {
-      fetch(`${API_URL}/admin/modules/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
-        body: JSON.stringify(data),
-      }).catch(() => {});
-    } catch (e) {}
-
     return Promise.resolve(mod);
   },
 
@@ -276,14 +237,6 @@ export const adminApi = {
     const { modules } = getPersistentStore();
     const updatedModules = modules.filter((m) => m.id !== id);
     savePersistentModules(updatedModules);
-
-    try {
-      fetch(`${API_URL}/admin/modules/${id}`, {
-        method: 'DELETE',
-        headers: { 'x-user-id': 'admin' },
-      }).catch(() => {});
-    } catch (e) {}
-
     return Promise.resolve({ success: true });
   },
 
@@ -303,15 +256,6 @@ export const adminApi = {
     };
     mod.lessons.push(newLesson);
     savePersistentModules(modules);
-
-    try {
-      fetch(`${API_URL}/admin/modules/${moduleId}/lessons`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
-        body: JSON.stringify(data),
-      }).catch(() => {});
-    } catch (e) {}
-
     return Promise.resolve(newLesson);
   },
 
@@ -328,15 +272,6 @@ export const adminApi = {
         if (data.videoUrl !== undefined) lesson.videoUrl = data.videoUrl;
         if (data.duration !== undefined) lesson.duration = data.duration;
         savePersistentModules(modules);
-
-        try {
-          fetch(`${API_URL}/admin/lessons/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'x-user-id': 'admin' },
-            body: JSON.stringify(data),
-          }).catch(() => {});
-        } catch (e) {}
-
         return Promise.resolve(lesson);
       }
     }
@@ -349,14 +284,6 @@ export const adminApi = {
       mod.lessons = mod.lessons.filter((l) => l.id !== id);
     }
     savePersistentModules(modules);
-
-    try {
-      fetch(`${API_URL}/admin/lessons/${id}`, {
-        method: 'DELETE',
-        headers: { 'x-user-id': 'admin' },
-      }).catch(() => {});
-    } catch (e) {}
-
     return Promise.resolve({ success: true });
   },
 
@@ -390,8 +317,8 @@ export const adminApi = {
       id: uuidv4(),
       userEmail: data.userEmail,
       userName: data.userName || data.userEmail.split('@')[0],
-      courseId: course.id,
-      courseTitle: course.title,
+      courseId: course ? course.id : 'reelslab-course-01',
+      courseTitle: course ? course.title : 'ReelsLab',
       tariff: data.tariff || 'VIP',
       accessExpiresAt: expires.toISOString(),
       createdAt: new Date().toISOString(),
@@ -399,6 +326,13 @@ export const adminApi = {
 
     const updated = [newAccess, ...accesses.filter((a) => a.userEmail !== data.userEmail)];
     savePersistentAccesses(updated);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user_name', newAccess.userName);
+      localStorage.setItem('user_email', newAccess.userEmail);
+      localStorage.setItem('activeStudentId', newAccess.id);
+    }
+
     return Promise.resolve(newAccess);
   },
 
@@ -420,6 +354,13 @@ export const adminApi = {
 
     const updated = [newAccess, ...accesses.filter((a) => a.userEmail !== userEmail)];
     savePersistentAccesses(updated);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user_name', newAccess.userName);
+      localStorage.setItem('user_email', newAccess.userEmail);
+      localStorage.setItem('activeStudentId', newAccess.id);
+    }
+
     return Promise.resolve(newAccess);
   },
 
@@ -427,6 +368,27 @@ export const adminApi = {
     const { accesses } = getPersistentStore();
     const updated = accesses.filter((a) => a.id !== accessId);
     savePersistentAccesses(updated);
+
+    if (typeof window !== 'undefined' && updated.length === 0) {
+      localStorage.removeItem('user_name');
+      localStorage.removeItem('user_email');
+      localStorage.removeItem('activeStudentId');
+    }
+
+    return Promise.resolve({ success: true });
+  },
+
+  // Очистить ВСЕХ учеников и сбросить активное состояние
+  deleteAllStudents: async () => {
+    savePersistentAccesses([]);
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user_name');
+      localStorage.removeItem('user_email');
+      localStorage.removeItem('activeStudentId');
+      localStorage.removeItem('reelslab_user_accesses');
+    }
+
     return Promise.resolve({ success: true });
   },
 };

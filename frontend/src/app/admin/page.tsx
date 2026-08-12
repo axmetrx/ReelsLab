@@ -21,6 +21,7 @@ import {
   BarChart3,
   TrendingUp,
   Video,
+  UserX,
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -128,7 +129,6 @@ export default function AdminDashboard() {
       setShowGrantModal(false);
       await loadAccesses();
 
-      // Скопировать ссылку для ученика
       const studentLink = `${window.location.origin}/course/${newAccess.courseId}`;
       navigator.clipboard.writeText(studentLink);
       alert(`Доступ успешно открыт для ${userEmail}!\nСсылка скопирована в буфер обмена: ${studentLink}`);
@@ -147,6 +147,17 @@ export default function AdminDashboard() {
       await loadAccesses();
     } catch (err) {
       alert('Ошибка при отзыве доступа');
+    }
+  };
+
+  const handleDeleteAllStudents = async () => {
+    if (!window.confirm('Вы уверены, что хотите полностью очистить список всех учеников?')) return;
+
+    try {
+      await adminApi.deleteAllStudents();
+      await loadAccesses();
+    } catch (err) {
+      alert('Ошибка при очистке списка учеников');
     }
   };
 
@@ -215,14 +226,27 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'accesses' && (
-          <button
-            type="button"
-            onClick={() => setShowGrantModal(true)}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-sm active:scale-95"
-          >
-            <UserCheck size={18} />
-            <span>Выдать доступ ученику</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {accesses.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDeleteAllStudents}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs text-red-600 bg-red-50 hover:bg-red-100 transition-all border border-red-200"
+              >
+                <UserX size={16} />
+                <span>Очистить всех</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowGrantModal(true)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-sm active:scale-95"
+            >
+              <UserCheck size={18} />
+              <span>Выдать доступ ученику</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -459,14 +483,24 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Accesses Table */}
+          {/* Accesses Table or Empty State */}
           {loadingAccesses ? (
             <div className="py-16 text-center text-slate-500 font-medium">Загрузка списка учеников...</div>
           ) : accesses.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center max-w-md mx-auto">
-              <UserCheck size={32} className="mx-auto text-slate-400 mb-3" />
-              <h3 className="text-base font-bold text-slate-900 mb-1">Нет активных доступов</h3>
-              <p className="text-sm text-slate-500 mb-4">Нажмите «Выдать доступ ученику», чтобы добавить первому ученику.</p>
+            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center max-w-md mx-auto animate-fade-in-up">
+              <UserX size={36} className="mx-auto text-slate-400 mb-3" />
+              <h3 className="text-base font-bold text-slate-900 mb-1">Учеников пока нет</h3>
+              <p className="text-sm text-slate-500 mb-5">
+                Список учеников пуст. Нажмите «Выдать доступ ученику», чтобы добавить первого участника.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowGrantModal(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+              >
+                <UserCheck size={16} />
+                <span>Выдать первый доступ</span>
+              </button>
             </div>
           ) : (
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
