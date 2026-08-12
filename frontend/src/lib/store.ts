@@ -52,10 +52,6 @@ const STORAGE_USERS = 'lms_users_v1';
 const STORAGE_CURRENT_USER = 'lms_current_user_v1';
 const EVENT_NAME = 'lms_store_updated';
 
-// Cloud Sync Endpoint (Free Shared JSON Store for ReelsLab across devices)
-const CLOUD_SYNC_BIN_ID = '67ab2d6de41b4d34e489ec6f'; // Public sync bin key
-const CLOUD_SYNC_URL = `https://api.jsonbin.io/v3/b/${CLOUD_SYNC_BIN_ID}`;
-
 // Helper to generate UUIDs
 export const uuid = () => Math.random().toString(36).substring(2, 11);
 
@@ -78,42 +74,35 @@ function notifyStoreUpdate() {
   }
 }
 
-// Background Cloud Sync Push
-async function pushToCloud(courses: Course[], users: User[]) {
+// Next.js Same-Domain Server API Sync (No CORS issues!)
+async function syncPushToServer(courses: Course[], users: User[]) {
   try {
-    await fetch(CLOUD_SYNC_URL, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': '$2a$10$wE9.mG9SgS7q1N/2a.NnU.6bN2/x1/qU6Y5wO',
-      },
+    await fetch('/api/store', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ courses, users }),
     });
   } catch (e) {
-    // Fail-safe silent catch if offline
+    console.error('Push error:', e);
   }
 }
 
-// Background Cloud Sync Pull
-async function pullFromCloud() {
+async function syncPullFromServer() {
   if (typeof window === 'undefined') return;
   try {
-    const res = await fetch(CLOUD_SYNC_URL, {
-      headers: {
-        'X-Master-Key': '$2a$10$wE9.mG9SgS7q1N/2a.NnU.6bN2/x1/qU6Y5wO',
-      },
+    const res = await fetch('/api/store', {
+      headers: { 'Cache-Control': 'no-cache' },
     });
     if (res.ok) {
-      const body = await res.json();
-      const record = body?.record || body;
-      if (record && (Array.isArray(record.courses) || Array.isArray(record.users))) {
-        if (record.courses) localStorage.setItem(STORAGE_COURSES, JSON.stringify(record.courses));
-        if (record.users) localStorage.setItem(STORAGE_USERS, JSON.stringify(record.users));
+      const data = await res.json();
+      if (Array.isArray(data?.courses) || Array.isArray(data?.users)) {
+        if (data.courses) localStorage.setItem(STORAGE_COURSES, JSON.stringify(data.courses));
+        if (data.users) localStorage.setItem(STORAGE_USERS, JSON.stringify(data.users));
         notifyStoreUpdate();
       }
     }
   } catch (e) {
-    // Fail-safe silent catch if offline
+    console.error('Pull error:', e);
   }
 }
 
@@ -122,8 +111,8 @@ export function useLMSStore() {
   const [state, setState] = useState(getRawData);
 
   useEffect(() => {
-    // 1. Initial Cloud Sync on mount
-    pullFromCloud();
+    // Sync from server when component mounts
+    syncPullFromServer();
 
     const handleUpdate = () => {
       setState(getRawData());
@@ -138,11 +127,11 @@ export function useLMSStore() {
     };
   }, []);
 
-  const saveLocalAndCloud = (courses: Course[], users: User[]) => {
+  const saveLocalAndServer = (courses: Course[], users: User[]) => {
     localStorage.setItem(STORAGE_COURSES, JSON.stringify(courses));
     localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
     notifyStoreUpdate();
-    pushToCloud(courses, users);
+    syncPushToServer(courses, users);
   };
 
   return {
@@ -169,7 +158,7 @@ export function useLMSStore() {
       };
 
       localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(activeUser));
-      saveLocalAndCloud(courses, updatedUsers);
+      saveLocalAndServer(courses, updatedUsers);
       return newStudent;
     },
 
@@ -217,7 +206,7 @@ export function useLMSStore() {
         modules: [],
       };
       const updatedCourses = [newCourse, ...courses];
-      saveLocalAndCloud(updatedCourses, users);
+      saveLocalAndServer(updatedCourses, users);
       return newCourse;
     },
 
@@ -230,7 +219,7 @@ export function useLMSStore() {
         }
         return c;
       });
-      saveLocalAndCloud(updated, users);
+      saveLocalAndServer(updated, users);
     },
 
     deleteModule: (courseId: string, moduleId: string) => {
@@ -241,7 +230,7 @@ export function useLMSStore() {
         }
         return c;
       });
-      saveLocalAndCloud(updated, users);
+      saveLocalAndServer(updated, users);
     },
 
     addLesson: (
@@ -272,7 +261,7 @@ export function useLMSStore() {
         }
         return c;
       });
-      saveLocalAndCloud(updated, users);
+      saveLocalAndServer(updated, users);
     },
 
     updateLesson: (
@@ -307,7 +296,7 @@ export function useLMSStore() {
         }
         return c;
       });
-      saveLocalAndCloud(updated, users);
+      saveLocalAndServer(updated, users);
     },
 
     deleteLesson: (courseId: string, moduleId: string, lessonId: string) => {
@@ -324,7 +313,7 @@ export function useLMSStore() {
         }
         return c;
       });
-      saveLocalAndCloud(updated, users);
+      saveLocalAndServer(updated, users);
     },
 
     // Admin Access Actions
@@ -358,7 +347,7 @@ export function useLMSStore() {
         }
       }
 
-      saveLocalAndCloud(courses, updatedUsers);
+      saveLocalAndServer(courses, updatedUsers);
     },
 
     // Admin Data Cleanup
@@ -371,22 +360,22 @@ export function useLMSStore() {
         localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(updatedActiveUser));
       }
 
-      saveLocalAndCloud([], updatedUsers);
+      saveLocalAndServer([], updatedUsers);
     },
 
     clearUsers: () => {
       const { courses } = getRawData();
       localStorage.removeItem(STORAGE_CURRENT_USER);
-      saveLocalAndCloud(courses, []);
+      saveLocalAndServer(courses, []);
     },
 
     clearAll: () => {
       localStorage.removeItem(STORAGE_CURRENT_USER);
-      saveLocalAndCloud([], []);
+      saveLocalAndServer([], []);
     },
 
     syncNow: () => {
-      pullFromCloud();
+      syncPullFromServer();
     },
   };
 }
