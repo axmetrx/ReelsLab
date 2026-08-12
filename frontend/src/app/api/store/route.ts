@@ -1,38 +1,34 @@
 import { NextResponse } from 'next/server';
 
-const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/67ab2d6de41b4d34e489ec6f';
-const JSONBIN_KEY = '$2a$10$wE9.mG9SgS7q1N/2a.NnU.6bN2/x1/qU6Y5wO';
-
-// Server-side fallback memory
-let inMemoryStore = {
-  courses: [],
-  users: [],
-};
+// Upstash REST Persistent Cloud Database configuration for ReelsLab
+const UPSTASH_URL = 'https://climbing-trout-36070.upstash.io';
+const UPSTASH_TOKEN = 'AYz2ACQgZDc0Yzc5MDctZDMzMi00MThkLWFmYTktMWFiMjI4MWRiNTVhMTJiNmI2MWFlNmI2NGQzOGJkOTQ5MGI2YTkzMjFhNDQ=';
 
 export async function GET() {
   try {
-    const res = await fetch(JSONBIN_URL, {
+    const res = await fetch(`${UPSTASH_URL}/get/reelslab_db_store`, {
       headers: {
-        'X-Master-Key': JSONBIN_KEY,
+        Authorization: `Bearer ${UPSTASH_TOKEN}`,
       },
       cache: 'no-store',
     });
 
     if (res.ok) {
       const data = await res.json();
-      const record = data?.record || data;
-      if (record && (Array.isArray(record.courses) || Array.isArray(record.users))) {
-        inMemoryStore = {
-          courses: record.courses || [],
-          users: record.users || [],
-        };
+      if (data.result) {
+        const parsed = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+        return NextResponse.json(parsed, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+        });
       }
     }
   } catch (err) {
-    console.error('API GET sync error:', err);
+    console.error('Database GET error:', err);
   }
 
-  return NextResponse.json(inMemoryStore, {
+  return NextResponse.json({ courses: [], users: [] }, {
     headers: {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
     },
@@ -42,23 +38,28 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const courses = Array.isArray(body?.courses) ? body.courses : inMemoryStore.courses;
-    const users = Array.isArray(body?.users) ? body.users : inMemoryStore.users;
+    const courses = Array.isArray(body?.courses) ? body.courses : [];
+    const users = Array.isArray(body?.users) ? body.users : [];
 
-    inMemoryStore = { courses, users };
+    const dbPayload = { courses, users };
 
-    // Async push to JSONBin from server side (No CORS issues on server side!)
-    fetch(JSONBIN_URL, {
-      method: 'PUT',
+    // Save permanently to Upstash Persistent Database
+    const res = await fetch(`${UPSTASH_URL}/set/reelslab_db_store`, {
+      method: 'POST',
       headers: {
+        Authorization: `Bearer ${UPSTASH_TOKEN}`,
         'Content-Type': 'application/json',
-        'X-Master-Key': JSONBIN_KEY,
       },
-      body: JSON.stringify({ courses, users }),
-    }).catch((err) => console.error('API PUT cloud error:', err));
+      body: JSON.stringify(JSON.stringify(dbPayload)),
+    });
 
-    return NextResponse.json({ success: true, store: inMemoryStore });
+    if (!res.ok) {
+      throw new Error(`DB write status: ${res.status}`);
+    }
+
+    return NextResponse.json({ success: true, store: dbPayload });
   } catch (err) {
-    return NextResponse.json({ error: 'Failed to update store' }, { status: 500 });
+    console.error('Database POST error:', err);
+    return NextResponse.json({ error: 'Failed to write to database' }, { status: 500 });
   }
 }
