@@ -52,6 +52,10 @@ const STORAGE_USERS = 'lms_users_v1';
 const STORAGE_CURRENT_USER = 'lms_current_user_v1';
 const EVENT_NAME = 'lms_store_updated';
 
+// Cloud Sync Endpoint (Free Shared JSON Store for ReelsLab across devices)
+const CLOUD_SYNC_BIN_ID = '67ab2d6de41b4d34e489ec6f'; // Public sync bin key
+const CLOUD_SYNC_URL = `https://api.jsonbin.io/v3/b/${CLOUD_SYNC_BIN_ID}`;
+
 // Helper to generate UUIDs
 export const uuid = () => Math.random().toString(36).substring(2, 11);
 
@@ -74,11 +78,53 @@ function notifyStoreUpdate() {
   }
 }
 
+// Background Cloud Sync Push
+async function pushToCloud(courses: Course[], users: User[]) {
+  try {
+    await fetch(CLOUD_SYNC_URL, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': '$2a$10$wE9.mG9SgS7q1N/2a.NnU.6bN2/x1/qU6Y5wO',
+      },
+      body: JSON.stringify({ courses, users }),
+    });
+  } catch (e) {
+    // Fail-safe silent catch if offline
+  }
+}
+
+// Background Cloud Sync Pull
+async function pullFromCloud() {
+  if (typeof window === 'undefined') return;
+  try {
+    const res = await fetch(CLOUD_SYNC_URL, {
+      headers: {
+        'X-Master-Key': '$2a$10$wE9.mG9SgS7q1N/2a.NnU.6bN2/x1/qU6Y5wO',
+      },
+    });
+    if (res.ok) {
+      const body = await res.json();
+      const record = body?.record || body;
+      if (record && (Array.isArray(record.courses) || Array.isArray(record.users))) {
+        if (record.courses) localStorage.setItem(STORAGE_COURSES, JSON.stringify(record.courses));
+        if (record.users) localStorage.setItem(STORAGE_USERS, JSON.stringify(record.users));
+        notifyStoreUpdate();
+      }
+    }
+  } catch (e) {
+    // Fail-safe silent catch if offline
+  }
+}
+
 // React hook to read reactive store state in components
 export function useLMSStore() {
   const [state, setState] = useState(getRawData);
 
   useEffect(() => {
+    // 1. Initial Cloud Sync on mount
+    pullFromCloud();
+
     const handleUpdate = () => {
       setState(getRawData());
     };
@@ -92,12 +138,19 @@ export function useLMSStore() {
     };
   }, []);
 
+  const saveLocalAndCloud = (courses: Course[], users: User[]) => {
+    localStorage.setItem(STORAGE_COURSES, JSON.stringify(courses));
+    localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+    notifyStoreUpdate();
+    pushToCloud(courses, users);
+  };
+
   return {
     ...state,
 
     // Auth & User Actions
     registerUser: (name: string, email: string, password?: string) => {
-      const { users } = getRawData();
+      const { courses, users } = getRawData();
       const newStudent: User = {
         id: uuid(),
         name: name.trim() || email.split('@')[0],
@@ -115,9 +168,8 @@ export function useLMSStore() {
         grantedCourses: [],
       };
 
-      localStorage.setItem(STORAGE_USERS, JSON.stringify(updatedUsers));
       localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(activeUser));
-      notifyStoreUpdate();
+      saveLocalAndCloud(courses, updatedUsers);
       return newStudent;
     },
 
@@ -156,7 +208,7 @@ export function useLMSStore() {
 
     // Admin Course Actions
     createCourse: (title: string, description: string) => {
-      const { courses } = getRawData();
+      const { courses, users } = getRawData();
       const newCourse: Course = {
         id: uuid(),
         title: title.trim(),
@@ -165,13 +217,12 @@ export function useLMSStore() {
         modules: [],
       };
       const updatedCourses = [newCourse, ...courses];
-      localStorage.setItem(STORAGE_COURSES, JSON.stringify(updatedCourses));
-      notifyStoreUpdate();
+      saveLocalAndCloud(updatedCourses, users);
       return newCourse;
     },
 
     addModule: (courseId: string, title: string) => {
-      const { courses } = getRawData();
+      const { courses, users } = getRawData();
       const updated = courses.map((c) => {
         if (c.id === courseId) {
           const newModule: Module = { id: uuid(), title: title.trim(), lessons: [] };
@@ -179,20 +230,18 @@ export function useLMSStore() {
         }
         return c;
       });
-      localStorage.setItem(STORAGE_COURSES, JSON.stringify(updated));
-      notifyStoreUpdate();
+      saveLocalAndCloud(updated, users);
     },
 
     deleteModule: (courseId: string, moduleId: string) => {
-      const { courses } = getRawData();
+      const { courses, users } = getRawData();
       const updated = courses.map((c) => {
         if (c.id === courseId) {
           return { ...c, modules: c.modules.filter((m) => m.id !== moduleId) };
         }
         return c;
       });
-      localStorage.setItem(STORAGE_COURSES, JSON.stringify(updated));
-      notifyStoreUpdate();
+      saveLocalAndCloud(updated, users);
     },
 
     addLesson: (
@@ -200,7 +249,7 @@ export function useLMSStore() {
       moduleId: string,
       lessonData: { title: string; type?: string; videoUrl?: string; duration?: number; description?: string }
     ) => {
-      const { courses } = getRawData();
+      const { courses, users } = getRawData();
       const updated = courses.map((c) => {
         if (c.id === courseId) {
           const newModules = c.modules.map((m) => {
@@ -223,8 +272,7 @@ export function useLMSStore() {
         }
         return c;
       });
-      localStorage.setItem(STORAGE_COURSES, JSON.stringify(updated));
-      notifyStoreUpdate();
+      saveLocalAndCloud(updated, users);
     },
 
     updateLesson: (
@@ -233,7 +281,7 @@ export function useLMSStore() {
       lessonId: string,
       lessonData: { title?: string; type?: string; videoUrl?: string; duration?: number; description?: string }
     ) => {
-      const { courses } = getRawData();
+      const { courses, users } = getRawData();
       const updated = courses.map((c) => {
         if (c.id === courseId) {
           const newModules = c.modules.map((m) => {
@@ -259,12 +307,11 @@ export function useLMSStore() {
         }
         return c;
       });
-      localStorage.setItem(STORAGE_COURSES, JSON.stringify(updated));
-      notifyStoreUpdate();
+      saveLocalAndCloud(updated, users);
     },
 
     deleteLesson: (courseId: string, moduleId: string, lessonId: string) => {
-      const { courses } = getRawData();
+      const { courses, users } = getRawData();
       const updated = courses.map((c) => {
         if (c.id === courseId) {
           const newModules = c.modules.map((m) => {
@@ -277,13 +324,12 @@ export function useLMSStore() {
         }
         return c;
       });
-      localStorage.setItem(STORAGE_COURSES, JSON.stringify(updated));
-      notifyStoreUpdate();
+      saveLocalAndCloud(updated, users);
     },
 
     // Admin Access Actions
     grantAccess: (studentId: string, courseId: string, tariff: 'VIP' | 'Base') => {
-      const { users, currentUser } = getRawData();
+      const { courses, users, currentUser } = getRawData();
       const updatedUsers = users.map((u) => {
         if (u.id === studentId) {
           const expires = new Date();
@@ -301,8 +347,6 @@ export function useLMSStore() {
         return u;
       });
 
-      localStorage.setItem(STORAGE_USERS, JSON.stringify(updatedUsers));
-
       if (currentUser && currentUser.id === studentId) {
         const updatedStudent = updatedUsers.find((u) => u.id === studentId);
         if (updatedStudent) {
@@ -314,7 +358,7 @@ export function useLMSStore() {
         }
       }
 
-      notifyStoreUpdate();
+      saveLocalAndCloud(courses, updatedUsers);
     },
 
     // Admin Data Cleanup
@@ -322,28 +366,27 @@ export function useLMSStore() {
       const { users, currentUser } = getRawData();
       const updatedUsers = users.map((u) => ({ ...u, grantedCourses: [] }));
 
-      localStorage.setItem(STORAGE_COURSES, JSON.stringify([]));
-      localStorage.setItem(STORAGE_USERS, JSON.stringify(updatedUsers));
-
       if (currentUser && currentUser.role === 'student') {
         const updatedActiveUser: CurrentUser = { ...currentUser, grantedCourses: [] };
         localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(updatedActiveUser));
       }
 
-      notifyStoreUpdate();
+      saveLocalAndCloud([], updatedUsers);
     },
 
     clearUsers: () => {
-      localStorage.setItem(STORAGE_USERS, JSON.stringify([]));
+      const { courses } = getRawData();
       localStorage.removeItem(STORAGE_CURRENT_USER);
-      notifyStoreUpdate();
+      saveLocalAndCloud(courses, []);
     },
 
     clearAll: () => {
-      localStorage.setItem(STORAGE_COURSES, JSON.stringify([]));
-      localStorage.setItem(STORAGE_USERS, JSON.stringify([]));
       localStorage.removeItem(STORAGE_CURRENT_USER);
-      notifyStoreUpdate();
+      saveLocalAndCloud([], []);
+    },
+
+    syncNow: () => {
+      pullFromCloud();
     },
   };
 }
