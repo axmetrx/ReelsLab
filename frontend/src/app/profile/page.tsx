@@ -2,45 +2,124 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { adminApi, StudentAccess } from '@/lib/admin-api';
 import BottomDock from '@/components/BottomDock';
-import { User, Mail, Calendar, ShieldCheck, LogOut, BookOpen, ChevronRight, Settings, Lock } from 'lucide-react';
+import {
+  User,
+  Mail,
+  LogOut,
+  BookOpen,
+  ChevronRight,
+  Settings,
+  Lock,
+  UserX,
+  ShieldCheck,
+  UserPlus,
+} from 'lucide-react';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [userName, setUserName] = useState('Мария Иванова');
-  const [userEmail, setUserEmail] = useState('maria@example.com');
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userAccesses, setUserAccesses] = useState<StudentAccess[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedName = localStorage.getItem('user_name');
-      const savedEmail = localStorage.getItem('user_email');
-      if (savedName) setUserName(savedName);
-      if (savedEmail) setUserEmail(savedEmail);
-    }
+    const initProfile = async () => {
+      try {
+        setLoading(true);
+        if (typeof window !== 'undefined') {
+          const savedName = localStorage.getItem('user_name');
+          const savedEmail = localStorage.getItem('user_email');
+          setUserName(savedName);
+          setUserEmail(savedEmail);
+        }
+
+        const accesses = await adminApi.getAccesses();
+        setUserAccesses(accesses);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initProfile();
   }, []);
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user_name');
       localStorage.removeItem('user_email');
+      localStorage.removeItem('activeStudentId');
     }
-    router.push('/');
+    setUserName(null);
+    setUserEmail(null);
+    setUserAccesses([]);
+    router.push('/register');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-9 h-9 border-3 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+          <span className="text-xs font-semibold text-slate-500">Загрузка профиля...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Если нет авторизованного ученика или очищена база учеников
+  if (!userName || !userEmail || userAccesses.length === 0) {
+    return (
+      <div className="bg-[#F8FAFC] min-h-screen">
+        <main className="max-w-md sm:max-w-xl mx-auto px-4 py-12 pb-36 text-center">
+          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm max-w-sm mx-auto">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-4">
+              <UserX size={32} />
+            </div>
+
+            <h1 className="text-lg font-bold text-slate-900 mb-1">Профиль не активен</h1>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              В системе нет активного ученика или список доступов был очищен администратором.
+            </p>
+
+            <Link
+              href="/register"
+              className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm mb-3"
+            >
+              <UserPlus size={16} />
+              <span>Зарегистрироваться / Войти</span>
+            </Link>
+
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              <ShieldCheck size={14} />
+              <span>Перейти в Админ-панель</span>
+            </Link>
+          </div>
+        </main>
+        <BottomDock />
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-[#F4F4F6] min-h-screen">
+    <div className="bg-[#F8FAFC] min-h-screen">
       <main className="max-w-md sm:max-w-xl mx-auto px-4 py-6 pb-36">
         {/* Карточка профиля ученика */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm mb-6 flex flex-col items-center text-center">
+        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm mb-6 flex flex-col items-center text-center">
           {/* Аватар */}
           <div className="w-20 h-20 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-2xl mb-3 border-2 border-white shadow-sm">
             {userName.charAt(0).toUpperCase()}
           </div>
 
           {/* Имя и Почта */}
-          <h1 className="text-xl font-bold text-slate-900 mb-0.5">{userName}</h1>
+          <h1 className="text-lg font-bold text-slate-900 mb-0.5">{userName}</h1>
           <p className="text-xs font-medium text-slate-500 flex items-center gap-1 mb-4">
             <Mail size={13} />
             <span>{userEmail}</span>
@@ -48,65 +127,43 @@ export default function ProfilePage() {
 
           {/* Тарифный статус */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-            <span>Тариф VIP</span>
+            <span>Тариф {userAccesses[0]?.tariff || 'VIP'}</span>
             <span className="text-amber-400">•</span>
-            <span>До 31 декабря 2026</span>
+            <span>Доступа открыт</span>
           </div>
         </div>
 
         {/* Доступные курсы */}
         <div className="mb-6">
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider px-1 mb-3">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider px-1 mb-3">
             Мои курсы и доступы
           </h2>
 
-          <Link
-            href="/course/demo-course-001"
-            className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-slate-300 transition-all group"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <BookOpen size={20} />
-              </div>
+          <div className="space-y-3">
+            {userAccesses.map((access) => (
+              <Link
+                key={access.id}
+                href={`/course/${access.courseId}`}
+                className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex items-center justify-between hover:border-slate-200 transition-all group block"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <BookOpen size={20} />
+                  </div>
 
-              <div>
-                <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                  Основы цифрового маркетинга
-                </h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Пройдено 40% · Тариф VIP
-                </p>
-              </div>
-            </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                      {access.courseTitle}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      Тариф {access.tariff} · Активный доступ
+                    </p>
+                  </div>
+                </div>
 
-            <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" />
-          </Link>
-        </div>
-
-        {/* Настройки аккаунта */}
-        <div className="mb-6">
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider px-1 mb-3">
-            Настройки
-          </h2>
-
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm divide-y divide-slate-100 overflow-hidden">
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3 text-slate-700">
-                <Lock size={18} className="text-slate-400" />
-                <span className="text-sm font-medium">Безопасность и пароль</span>
-              </div>
-              <span className="text-xs font-semibold text-slate-400">Изменить</span>
-            </div>
-
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3 text-slate-700">
-                <Settings size={18} className="text-slate-400" />
-                <span className="text-sm font-medium">Уведомления на Email</span>
-              </div>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                Включены
-              </span>
-            </div>
+                <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" />
+              </Link>
+            ))}
           </div>
         </div>
 
@@ -114,13 +171,13 @@ export default function ProfilePage() {
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full bg-white hover:bg-red-50 text-red-600 border border-slate-200/80 hover:border-red-200 font-bold py-3.5 px-4 rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-sm mb-8"
+          className="w-full bg-white hover:bg-red-50 text-red-600 border border-slate-100 hover:border-red-200 font-bold py-3.5 px-4 rounded-2xl text-xs transition-all flex items-center justify-center gap-2 shadow-xs mb-8 cursor-pointer"
         >
-          <LogOut size={18} />
+          <LogOut size={16} />
           <span>Выйти из аккаунта</span>
         </button>
 
-        {/* Дискретная ссылка для преподавателя/админа в самом низу */}
+        {/* Дискретная ссылка для преподавателя/админа */}
         <div className="text-center">
           <Link
             href="/admin"

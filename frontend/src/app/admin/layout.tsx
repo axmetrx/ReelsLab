@@ -2,15 +2,29 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { ShieldCheck, ExternalLink, BookOpen, Users, BarChart2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { adminApi } from '@/lib/admin-api';
+import { ExternalLink } from 'lucide-react';
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const router = useRouter();
+
+  const handleStudentViewClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const accesses = await adminApi.getAccesses();
+    const courses = await adminApi.getCourses();
+
+    if (accesses.length === 0 || courses.length === 0) {
+      alert('В системе нет зарегистрированных учеников или созданных курсов.\nВы будете перенаправлены на страницу регистрации ученика.');
+      router.push('/register');
+    } else {
+      router.push(`/course/${accesses[0].courseId || 'reelslab-course-01'}`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F4F4F6] text-slate-900">
@@ -34,14 +48,14 @@ export default function AdminLayout({
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/course/reelslab-course-01"
-              target="_blank"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
+            <button
+              type="button"
+              onClick={handleStudentViewClick}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200 cursor-pointer"
             >
               <span>Вид ученика</span>
               <ExternalLink size={14} />
-            </Link>
+            </button>
           </div>
         </div>
       </header>
